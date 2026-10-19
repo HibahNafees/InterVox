@@ -52,7 +52,7 @@ Covers 2026-10-06 (first commit) to 2026-10-13: the API is live at commit `6df2f
 | Hosting (planned) | Oracle Cloud Always Free VM (2 cores / 12 GB ARM), Docker Compose, Caddy | Free tier (`SPEC.md`). Oracle refused the sign-up, so this was never used (see §7). |
 | Hosting (actual) | The **devbox** server: Docker Compose (db, api, purge) behind **nginx + certbot**; frontend on **Vercel Hobby** | Free. nginx already owned ports 80/443 on the devbox (`docs/DEPLOY.md` §2b, `commit 27501f6`). |
 | Domain / HTTPS | **DuckDNS** (`intervox.duckdns.org`), Let's Encrypt via certbot (Caddy on the Oracle path) | Free subdomain with automatic HTTPS. Microphone access requires HTTPS (`DEPLOY.md`). |
-| Testing | pytest (410 backend tests), Vitest 5 + Testing Library (143 frontend tests), black, ESLint | `CLAUDE.md` convention: every feature gets a test, and Fire is always mocked. Vitest went from version 3 to 5 to clear npm audit findings (**T-54**). |
+| Testing | pytest (417 backend tests), Vitest 5 + Testing Library (143 frontend tests), black, ESLint | `CLAUDE.md` convention: every feature gets a test, and Fire is always mocked. Vitest went from version 3 to 5 to clear npm audit findings (**T-54**). |
 | Evals | `evals/run.py`: AI candidates (strong, weak and rambling) run through the real API with a simulated clock and a budget guard | Measures whether scores separate good answers from weak ones (`commit c8cc4d4`, **T-72–T-75**). |
 | Coordination | `pm` CLI and `orchestration.tickets` on the devbox; a separate "master" agent session deploys | Every problem gets a ticket. Deploys go through a human approval gate (`/home/hibahnafees/CLAUDE.md`). |
 | Optional, not built | LiveKit Agents (real-time voice), Hume EVI (emotion experiment) | Phases 11–12 in `CLAUDE.md`; listed in the spec as optional. |
@@ -152,7 +152,7 @@ Every server deploy after go-live went through a ticket with a deploy plan, a hu
 
 **During the interview**
 - Ice-breaker small talk that is never scored (**T-34**), then one question at a time with follow-ups.
-- The interviewer never praises answers (**T-14**) and steers off-topic answers back to the question (**T-100**).
+- The interviewer never praises answers (**T-14**) and steers off-topic answers back to the question (**T-100**). When it can't steer back, it leaves the question with a neutral line ("Let's leave the caching strategy there.") instead of thanking them as if they had answered (**T-141**).
 - Controls: hint, skip, pause/resume and repeat (**T-40**).
 - Recorder with silence auto-stop, an undo window and Cancel (**T-32, T-88**). Answers are capped at 5 minutes.
 - Interviewer voice: browser speech, or Fire speech (`tts-kokoro`) when switched on.
@@ -279,6 +279,7 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
   - a real story about a different project scored 3.67;
   - the match is now decided in code: the named subject must be a résumé item that the answer never mentions;
   - its first live tests produced false positives ("p95" was split apart, and "retry" didn't match "retries"), fixed in **T-120** and **T-128**.
+  - a general question ("how would you optimize a PostgreSQL schema?") answered about something else (idempotency keys "stored in PostgreSQL") kept Relevance 4, because word matching can't judge a general subject (**T-142**). A narrow `subject_check` call now sees only the main question and the candidate's words; a clear "no" caps Relevance at 2 and the rewrite becomes a skeleton for answering the actual question. A first try inside the gap check was reverted after it capped a strong on-topic answer; the narrow check was right in 20 of 20 live cases, vague on-topic answers included.
 - **Results in rewrites (T-107, T-121, T-123, T-126):** a stated result was replaced by a placeholder, repeated, dropped, or left next to a redundant placeholder. Each case is now handled in `fill_result`.
 
 ### 6.7 Browser and recorder

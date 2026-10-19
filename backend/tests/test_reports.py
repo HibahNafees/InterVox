@@ -1500,6 +1500,85 @@ def test_relevance_stands_without_a_named_subject_mismatch(
     assert e["summary"] == SCORE["summary"]
 
 
+GENERAL_GAP = {
+    "points": [],
+    "named_subject": "optimizing a PostgreSQL database schema",
+    "story_subject": "idempotency in a payments API",
+}
+IDEMPOTENCY = "I would make every write idempotent with a key stored in PostgreSQL."
+
+
+def test_general_question_answered_about_something_else(client, auth, planned, fire):
+    # T-142 (live): asked how they'd optimize a PostgreSQL schema, they described
+    # idempotency keys "stored in PostgreSQL" and kept Relevance 4.
+    fire.scores = [_relevant(SCORE)]
+    fire.gap_checks = [GENERAL_GAP]
+    fire.subject_checks = [{"asks_for": "x", "quote": None, "on_subject": False}]
+    e = _report_for(client, auth, planned["id"], IDEMPOTENCY)
+    relevance = next(c for c in e["criteria"] if c["name"] == "Relevance")
+    assert relevance["score"] == 2
+    assert "optimizing a PostgreSQL database schema" in relevance["comment"]
+    assert e["summary"].startswith(
+        "The story was about idempotency in a payments API, but the question asked "
+        "about optimizing a PostgreSQL database schema."
+    )
+    # The rewrite says how to answer the question, not how to retell their story.
+    assert e["stronger_version"].startswith(
+        "[Answer what the question asks about, optimizing a PostgreSQL database "
+        "schema, directly"
+    )
+    # The narrow check sees the main question and their words, not the follow-ups.
+    prompt = next(
+        c["prompt"]
+        for c in fire.calls
+        if "talked about what the question asks about" in c["prompt"]
+    )
+    assert "It asks about: optimizing a PostgreSQL database schema" in prompt
+    assert IDEMPOTENCY in prompt
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        {"asks_for": "x", "quote": "some changes to the tables", "on_subject": True},
+        # A failed check never costs them the question.
+        FireError("Fire is down", 502),
+    ],
+)
+def test_general_subject_stands_when_they_talked_about_it(
+    client, auth, planned, fire, reply
+):
+    fire.scores = [_relevant(SCORE)]
+    fire.gap_checks = [GENERAL_GAP]
+    fire.subject_checks = [reply]
+    e = _report_for(client, auth, planned["id"], IDEMPOTENCY)
+    assert next(c for c in e["criteria"] if c["name"] == "Relevance")["score"] == 4
+    assert e["summary"] == SCORE["summary"]
+
+
+@pytest.mark.parametrize(
+    "check",
+    [
+        {"points": [], "named_subject": None},
+        # A résumé item: decided in code, no extra call (T-114).
+        {
+            "points": [],
+            "named_subject": "building the billing API",
+            "story_subject": "x",
+        },
+        # Only question words are named.
+        {"points": [], "named_subject": "a challenging project", "story_subject": "x"},
+    ],
+)
+def test_subject_check_runs_only_for_general_subjects(
+    client, auth, planned, fire, check
+):
+    fire.scores = [_relevant(SCORE)]
+    fire.gap_checks = [check]
+    _report_for(client, auth, planned["id"], "My answer is about the billing API.")
+    assert "subject_check" not in fire.kinds()
+
+
 def test_naming_the_metric_is_on_subject():
     # T-120 (live): "cutting p95 latency" was asked; "p95 dropped from 1.8 seconds"
     # was flagged off-subject because WORD_RE split p95 into p / 95.

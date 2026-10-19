@@ -935,6 +935,7 @@ def cap_off_subject(
     check: GapCheckOut | None,
     answers: list[str],
     resume: str,
+    general_off: bool = False,
 ) -> tuple[str, str] | None:
     """A real story about something other than the résumé item the question named
     (T-114: asked about building the refunds API, they told a migration story; it
@@ -942,11 +943,16 @@ def cap_off_subject(
     judges a match leniently, so the match is decided in code: at least two of the
     subject's words are in the résumé (a résumé item, not a category like
     "optimizing a backend process") and none of those appear in their answers.
+    A subject that isn't a résumé item ("optimizing a PostgreSQL schema") is capped
+    when `general_off`: off_general_subject() found they never talked about it.
     Returns (named subject, story subject) when it capped Relevance."""
     subject = ((check.named_subject or "") if check else "").strip().rstrip(".")
     item = subject_item(subject, resume)
     said = _roots(" ".join(answers)) | _metrics(" ".join(answers))
-    if len(item) < SUBJECT_WORDS or (item | _metrics(subject)) & said:
+    if len(item) < SUBJECT_WORDS:
+        if not general_off:
+            return None
+    elif (item | _metrics(subject)) & said:
         return None
     story = (check.story_subject or "something else").strip().rstrip(".")
     for c in criteria:
@@ -959,6 +965,56 @@ def cap_off_subject(
                 )
             return subject, story
     return None
+
+
+class SubjectCheckOut(BaseModel):
+    asks_for: str = Field(default="", max_length=300)
+    quote: str | None = Field(default=None, max_length=600)
+    on_subject: bool
+
+
+def general_subject(check: GapCheckOut | None, resume: str) -> str | None:
+    """The named subject when it is a general one (not a résumé item, and more than
+    question words: "optimizing a PostgreSQL database schema"), else None."""
+    subject = ((check.named_subject or "") if check else "").strip().rstrip(".")
+    named = _roots(subject) - {_root(w) for w in QUESTION_WORDS}
+    if (
+        len(named) < SUBJECT_WORDS
+        or len(subject_item(subject, resume)) >= SUBJECT_WORDS
+    ):
+        return None
+    return subject
+
+
+def off_general_subject(
+    user_id: int, question: str, subject: str, answers: list[str]
+) -> bool:
+    """T-142 (live): asked how they'd optimize a PostgreSQL schema, they described
+    idempotency keys "stored in PostgreSQL" and kept Relevance 4. Words can't match a
+    general subject (a good answer says "indexes" and "partitioning"), and the gap
+    check, doing several jobs and reading the interviewer's drifting follow-up,
+    judged it on subject. So one narrow call sees only the question and their words.
+    Only a clear "no" counts; a failed call never caps."""
+    prompt = render(
+        "subject_check", question=question, subject=subject, answers=answers
+    )
+    try:
+        out = chat_json(
+            user_id, prompt, SubjectCheckOut, SYSTEM, max_tokens=300, temperature=0
+        )
+    except FireError as err:
+        log.warning("Subject check failed, keeping Relevance: %s", err)
+        return False
+    return not out.on_subject
+
+
+# Rewrite skeleton for a general question answered about something else: their story
+# doesn't answer it, so the rewrite says how to (T-142).
+GENERAL_OFF_SUBJECT_REWRITE = (
+    "[Answer what the question asks about, {subject}, directly in one sentence.] "
+    "[Explain how you'd do it and why.] [Give a trade-off, or an example from your "
+    "own work.]"
+)
 
 
 # A summary sentence that calls the answer relevant or on topic.
@@ -1330,8 +1386,18 @@ def _evaluate(
         )
     verify_coverage(out, answers)
     gaps = check_gaps(user_id, exchange, out.missing_points, answers)
+    general = None if scenario else general_subject(gaps, resume_text)
     off_subject = (
-        cap_off_subject(out.criteria, gaps, answers, resume_text)
+        cap_off_subject(
+            out.criteria,
+            gaps,
+            answers,
+            resume_text,
+            general_off=general is not None
+            and off_general_subject(
+                user_id, question or exchange[0]["interviewer"], general, answers
+            ),
+        )
         if not scenario
         else None
     )
@@ -1387,7 +1453,12 @@ def _evaluate(
             answers,
             words,
         )
-        if off_subject:
+        if off_subject and general is not None:
+            stronger, changes = (
+                GENERAL_OFF_SUBJECT_REWRITE.format(subject=off_subject[0]),
+                [],
+            )
+        elif off_subject:
             kept = drop_named_subject(
                 stronger,
                 subject_item(off_subject[0], resume_text),

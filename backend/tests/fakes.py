@@ -253,6 +253,8 @@ class FakeFire:
         self.gap_checks: list[dict | Exception] = []
         # Second opinion on a "didn't answer" verdict (T-112); default agrees.
         self.answer_checks: list[dict | Exception] = []
+        # Did they talk about a general question's subject (T-142); default yes.
+        self.subject_checks: list[dict | Exception] = []
         # Replies to "Do you have any questions for me?" turns.
         self.candidate_replies: list[dict | Exception] = []
 
@@ -283,6 +285,14 @@ class FakeFire:
                 self.answer_checks.pop(0)
                 if self.answer_checks
                 else {"attempts": False, "quote": None}
+            )
+            if isinstance(body, Exception):
+                raise body
+        elif "talked about what the question asks about" in prompt:
+            body = (
+                self.subject_checks.pop(0)
+                if self.subject_checks
+                else {"asks_for": "x", "quote": None, "on_subject": True}
             )
             if isinstance(body, Exception):
                 raise body
@@ -400,6 +410,7 @@ class FakeFire:
                 ("Score one question", "score"),
                 ("Check which points a candidate covered", "gap"),
                 ("attempted the question they were asked", "answer_check"),
+                ("talked about what the question asks about", "subject_check"),
                 ("summary for a practice-interview", "summary"),
                 ('Fix a "stronger version"', "repair"),
             ):
