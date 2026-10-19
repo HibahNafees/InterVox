@@ -1012,6 +1012,19 @@ def test_fairness_rules_reach_every_prompt(client, auth, planned, fire):
     assert "an accent" in prompts["score"]
 
 
+def test_off_topic_answer_is_not_thanked_as_an_answer(client, auth, planned, fire):
+    # T-141: an off-topic reply to a follow-up got "Thanks for walking me through
+    # that." and the next question, as if it had answered.
+    sid = planned["id"]
+    finished(client, auth, fire, sid)
+    turn = next(
+        c["prompt"] for c in fire.calls if "live practice interview" in c["prompt"]
+    )
+    assert "or you already steered them back once" in turn
+    assert "Let's leave <the topic of your question> there." in turn
+    assert "after an answer about a different topic, use the neutral line" in turn
+
+
 def test_interviewer_adapts_the_challenge(client, auth, planned, fire):
     # docs/INTERVIEWER_RULES.md, Adaptive Difficulty (T-43).
     sid = planned["id"]
