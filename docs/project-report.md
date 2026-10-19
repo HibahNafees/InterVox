@@ -311,7 +311,7 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
   - code in `/srv/intervox`;
   - `docker compose -f docker-compose.yml -f deploy/compose.devbox.yml` (Caddy off, API only on `127.0.0.1:8000`);
   - nginx site `intervox` with a certbot certificate for **https://intervox.duckdns.org**.
-- **Frontend:** **Vercel Hobby**, from the `frontend/` folder with `vercel.json` (page routes, security headers, cached assets). It auto-deploys `main` to **https://intervox-pi.vercel.app**. `VITE_API_URL` points at the DuckDNS API.
+- **Frontend:** **Vercel Hobby**, from the `frontend/` folder with `vercel.json` (page routes, security headers, cached assets). It auto-deploys `main` to **https://www.intervox.site** (custom domain from Namecheap; `intervox.site` redirects to `www`) and **https://intervox-pi.vercel.app**, which stays live. `VITE_API_URL` points at the DuckDNS API, whose `CORS_ORIGINS` lists all three origins (T-138).
 - **Security headers:** HSTS, `nosniff`, `X-Frame-Options: DENY`, Referrer-Policy and Permissions-Policy, on both nginx/Caddy and Vercel. The API host answers only `/api/*`; everything else gets 404.
 - **Backups:** root cron at 03:00 runs `deploy/backup.sh`, which writes to `/root/backups` and keeps 14 (**T-79/T-80**).
 - **Deploy flow:** ticket `pending_review` with a JSON `deploy_plan`, then `pm approve T-n` by the user, then master pulls, rebuilds `api` (migrations run on start), checks `/api/health` and closes the ticket. Website-only changes (such as **T-133**) need no server deploy: Vercel publishes them when `main` is pushed.
