@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 
 from flask import current_app
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from ..extensions import db
 from ..models import AnonSpend, Answer, JdDecode, Question, Session, UsageLimit
@@ -31,6 +31,7 @@ def _row(user_id: int) -> UsageLimit:
             llm_calls=0,
             sessions_count=0,
             decoder_runs=0,
+            lab_calls=0,
             fire_spend_usd=0,
         )
         db.session.add(row)
@@ -179,3 +180,53 @@ def record_decode(user_id: int | None) -> None:
     if user_id is not None:
         _row(user_id).decoder_runs += 1
         db.session.commit()
+
+
+def lab_calls_used(user_id: int) -> int:
+    row = db.session.get(UsageLimit, (user_id, today()))
+    return row.lab_calls if row else 0
+
+
+def reserve_lab_calls(user_id: int, calls: int) -> None:
+    """Take `calls` of today's Chat Lab calls before any Fire call is made.
+
+    One conditional UPDATE, so two tabs can't both squeeze past the cap; a request
+    that would go over is refused whole, never half-answered."""
+    check_budget()
+    cap = current_app.config["LAB_DAILY_CALLS"]
+    _row(user_id)
+    db.session.commit()
+    taken = db.session.execute(
+        db.update(UsageLimit)
+        .where(
+            UsageLimit.user_id == user_id,
+            UsageLimit.date == today(),
+            UsageLimit.lab_calls + calls <= cap,
+        )
+        .values(lab_calls=UsageLimit.lab_calls + calls)
+        .execution_options(synchronize_session=False)
+    ).rowcount
+    db.session.commit()
+    if not taken:
+        left = max(0, cap - lab_calls_used(user_id))
+        raise LimitReached(
+            f"That needs {calls} Chat Lab call{'s' if calls != 1 else ''} and you have "
+            f"{left} of today's {cap} left. Come back tomorrow."
+        )
+
+
+def release_lab_calls(user_id: int, calls: int) -> None:
+    """Give back reserved calls that were never made (a Fire call failed first)."""
+    if calls <= 0:
+        return
+    db.session.execute(
+        db.update(UsageLimit)
+        .where(UsageLimit.user_id == user_id, UsageLimit.date == today())
+        .values(
+            lab_calls=case(
+                (UsageLimit.lab_calls > calls, UsageLimit.lab_calls - calls), else_=0
+            )
+        )
+        .execution_options(synchronize_session=False)
+    )
+    db.session.commit()

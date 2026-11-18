@@ -186,6 +186,7 @@ Every server deploy after go-live went through a ticket with a deploy plan, a hu
 **Other tools**
 - JD decoder that works signed out, with saved decodes (**T-64**).
 - Résumé gap analysis, a coach for the questions to ask them, and company research that fetches the public site safely.
+- **Chat Lab** (`/lab`, **T-146**): a prep chat with the user's résumé and JD (STAR help, no invented experience); a **debate** where two hiring managers argue for and against an answer at temperature 1 and a judge at temperature 0 gives a score out of 5, reasons and one tip, under a practice-feedback note; a **compare** that sends one prompt to two model/temperature settings side by side; and **settings** to pick the model (GPT-4o mini or Claude Haiku 4.5) and edit each agent's system prompt and temperature, with Reset. Fire allows temperatures up to 1 for every model, so 1 is the top of every slider and the backend refuses anything higher. A fixed guard (`prompts/lab_guard.txt`) is always added after the user's own prompt. **Cost guard:** 10 Chat Lab calls per user per day (`LAB_DAILY_CALLS`; chat 1, compare 2, debate 3) on top of the monthly budget. A request's calls are reserved in one conditional UPDATE before any Fire call, so one that would go over is refused whole and two tabs can't both slip past the cap; a call that fails is given back. Nothing from the lab is stored.
 
 **Accounts, privacy and admin**
 - JWT auth with rate limits on login, signup and delete.

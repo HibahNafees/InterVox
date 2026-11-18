@@ -1,0 +1,18 @@
+Judge this interview answer after a debate between two hiring managers.
+
+Interview question:
+$question
+
+The candidate's answer:
+$answer
+
+The manager arguing FOR:
+$advocate
+
+The manager arguing AGAINST:
+$skeptic
+
+Reply with only a JSON object:
+{"score": <integer 1-5, where 1 = weak, 3 = acceptable, 5 = excellent>,
+ "reasons": [<2 or 3 short reasons for the score, each one sentence>],
+ "tip": "<the one change that would most improve this answer>"}

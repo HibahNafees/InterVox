@@ -10,6 +10,7 @@ const NAV = [
   ['/decoder', 'JD decoder'],
   ['/debrief', 'Debrief'],
   ['/reverse', 'Reverse'],
+  ['/lab', 'Chat Lab'],
 ]
 
 // `onColor` is for coloured backgrounds (the sign-in panel), where the coral

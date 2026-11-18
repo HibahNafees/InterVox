@@ -257,6 +257,13 @@ class FakeFire:
         self.subject_checks: list[dict | Exception] = []
         # Replies to "Do you have any questions for me?" turns.
         self.candidate_replies: list[dict | Exception] = []
+        # Chat Lab plain-text replies (else "Lab reply <n>") and the judge's verdict.
+        self.lab_replies: list[str | Exception] = []
+        self.lab_verdict: dict | str = {
+            "score": 4,
+            "reasons": ["Clear ownership.", "No measured result."],
+            "tip": "Add the result you achieved.",
+        }
 
     def chat(
         self, messages, system_prompt=None, max_tokens=1024, temperature=0.4, model=None
@@ -268,9 +275,21 @@ class FakeFire:
                 "messages": messages,
                 "model": model,
                 "temperature": temperature,
+                "system": system_prompt,
             }
         )
-        if "Analyze this job description" in prompt:
+        if "Judge this interview answer after a debate" in prompt:
+            body = self.lab_verdict
+        elif system_prompt and "InterVox Chat Lab" in system_prompt:
+            reply = (
+                self.lab_replies.pop(0)
+                if self.lab_replies
+                else f"Lab reply {len(self.calls)}"
+            )
+            if isinstance(reply, Exception):
+                raise reply
+            return ChatResult(content=reply, price_usd=self.price)
+        elif "Analyze this job description" in prompt:
             body = self.analysis
         elif "question plan" in prompt:
             body = self.plan

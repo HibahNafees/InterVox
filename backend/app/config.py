@@ -63,6 +63,8 @@ class Config:
     DAILY_PLANS = int(os.environ.get("DAILY_PLANS", "10"))
     DAILY_RETRIES = int(os.environ.get("DAILY_RETRIES", "20"))
     DAILY_DECODER_RUNS = int(os.environ.get("DAILY_DECODER_RUNS", "5"))
+    # Chat Lab calls per user per day: a chat costs 1, a compare 2, a debate 3.
+    LAB_DAILY_CALLS = int(os.environ.get("LAB_DAILY_CALLS", "10"))
     # Signed-out decoder use: per visitor (IP) and across all visitors, per day.
     ANON_DECODER_RUNS = int(os.environ.get("ANON_DECODER_RUNS", "3"))
     ANON_DECODER_DAILY = int(os.environ.get("ANON_DECODER_DAILY", "30"))

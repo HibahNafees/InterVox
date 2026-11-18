@@ -57,14 +57,16 @@ def chat_json(
     max_tokens: int = 1500,
     temperature: float = 0.4,
     context: dict | None = None,
+    model: str | None = None,
 ) -> M:
     """Ask Fire chat for JSON matching `schema`; retry once if it's invalid.
 
-    `context` reaches the schema's validators. Every call's price is recorded
-    against the user, including failed parses.
+    `context` reaches the schema's validators; `model` overrides FIRE_CHAT_MODEL
+    (the Chat Lab's model picker). Every call's price is recorded against the user,
+    including failed parses.
     """
     fire = get_fire()
-    model = current_app.config.get("FIRE_CHAT_MODEL")
+    model = model or current_app.config.get("FIRE_CHAT_MODEL")
     messages = [{"role": "user", "content": prompt}]
     for attempt in (1, 2):
         result = fire.chat(

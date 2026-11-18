@@ -1,0 +1,5 @@
+Interview question:
+$question
+
+The candidate's answer:
+$answer

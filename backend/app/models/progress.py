@@ -99,6 +99,9 @@ class UsageLimit(db.Model):
     llm_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     sessions_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     decoder_runs: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lab_calls: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     fire_spend_usd: Mapped[float] = mapped_column(
         Numeric(10, 6, asdecimal=False), nullable=False, default=0
     )

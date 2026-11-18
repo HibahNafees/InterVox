@@ -1,0 +1,8 @@
+Interview question:
+$question
+
+The candidate's answer:
+$answer
+
+The other manager argued FOR hiring them:
+$advocate

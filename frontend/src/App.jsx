@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import Debrief from './pages/Debrief'
 import Decoder from './pages/Decoder'
 import Interview from './pages/Interview'
+import Lab from './pages/Lab'
 import Login from './pages/Login'
 import Report, { SharedReport } from './pages/Report'
 import Reverse, { ReverseSetup } from './pages/Reverse'
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="decoder" element={<Decoder />} />
           <Route path="decoder/:token" element={<Decoder />} />
           <Route path="debrief" element={<Debrief />} />
+          <Route path="lab" element={<Lab />} />
           <Route path="reverse" element={<ReverseSetup />} />
           <Route path="reverse/:id" element={<Reverse />} />
         </Route>
