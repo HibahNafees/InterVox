@@ -2,9 +2,9 @@
 
 *How we built InterVox, an AI practice interviewer, from the first spec to the live site.*
 
-Covers 2026-10-06 (first commit) to 2026-10-13: the API is live at commit `6df2fde` and the website at `f0d404a` (later commits are docs-only).
+Covers 2026-10-06 (first commit) to 2026-11-18: the API and the website are live at commit `c62400b`, which added the **Chat Lab** chatbot (**T-146**).
 
-**Sources.** This report uses only the project's own records: the git history (136 commits up to `f0d404a`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (120 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
+**Sources.** This report uses only the project's own records: the git history (142 commits up to `c62400b`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (127 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
 
 ---
 
@@ -20,6 +20,15 @@ Covers 2026-10-06 (first commit) to 2026-10-13: the API is live at commit `6df2f
 - For October 2026 only, the live site's budget is **$1.45** (T-76, `CLAUDE.md`). It goes back to $1 in November.
 - The spec also lists the developer's Claude Pro subscription as already paid (`docs/SPEC.md`).
 - Every other piece is free: open-source libraries, Vercel Hobby, DuckDNS and Let's Encrypt.
+
+**Chat Lab (a chatbot).** Besides the interviews, InterVox has a chatbot page, the **Chat Lab** (**T-146**, §5), with four tabs:
+
+- **Prep chat:** add your résumé and job description, and a coach helps with likely questions and STAR answers without making up experience you don't have.
+- **Debate:** paste a question and your answer. Two hiring managers argue for and against hiring you at temperature 1, then a judge at temperature 0 gives a score out of 5, reasons and one tip, with a note that it's practice feedback and a person makes real hiring decisions.
+- **Compare:** the same prompt sent to two settings (model and temperature), with the answers side by side.
+- **Settings:** pick the model, edit each agent's system prompt and temperature, Reset, and a short explanation of temperature.
+
+Each user can make **10 Chat Lab calls a day** (a chat uses 1, a compare 2, a debate 3), on top of the monthly budget, so no single user can spend the whole budget.
 
 **Framing.** Scores are practice feedback, not an assessment. A disclaimer is shown for licensed or specialized professions (hard rule 6).
 
@@ -52,7 +61,7 @@ Covers 2026-10-06 (first commit) to 2026-10-13: the API is live at commit `6df2f
 | Hosting (planned) | Oracle Cloud Always Free VM (2 cores / 12 GB ARM), Docker Compose, Caddy | Free tier (`SPEC.md`). Oracle refused the sign-up, so this was never used (see §7). |
 | Hosting (actual) | The **devbox** server: Docker Compose (db, api, purge) behind **nginx + certbot**; frontend on **Vercel Hobby** | Free. nginx already owned ports 80/443 on the devbox (`docs/DEPLOY.md` §2b, `commit 27501f6`). |
 | Domain / HTTPS | **DuckDNS** (`intervox.duckdns.org`), Let's Encrypt via certbot (Caddy on the Oracle path) | Free subdomain with automatic HTTPS. Microphone access requires HTTPS (`DEPLOY.md`). |
-| Testing | pytest (417 backend tests), Vitest 5 + Testing Library (143 frontend tests), black, ESLint | `CLAUDE.md` convention: every feature gets a test, and Fire is always mocked. Vitest went from version 3 to 5 to clear npm audit findings (**T-54**). |
+| Testing | pytest (429 backend tests), Vitest 5 + Testing Library (147 frontend tests), black, ESLint | `CLAUDE.md` convention: every feature gets a test, and Fire is always mocked. Vitest went from version 3 to 5 to clear npm audit findings (**T-54**). |
 | Evals | `evals/run.py`: AI candidates (strong, weak and rambling) run through the real API with a simulated clock and a budget guard | Measures whether scores separate good answers from weak ones (`commit c8cc4d4`, **T-72–T-75**). |
 | Coordination | `pm` CLI and `orchestration.tickets` on the devbox; a separate "master" agent session deploys | Every problem gets a ticket. Deploys go through a human approval gate (`/home/hibahnafees/CLAUDE.md`). |
 | Optional, not built | LiveKit Agents (real-time voice), Hume EVI (emotion experiment) | Phases 11–12 in `CLAUDE.md`; listed in the spec as optional. |
@@ -64,7 +73,7 @@ Covers 2026-10-06 (first commit) to 2026-10-13: the API is live at commit `6df2f
 ```
                        ┌───────────────────────────── Vercel (free) ─────────────────────────────┐
                        │  React app: Setup · Interview · Report · Dashboard · Story bank ·        │
-  User's browser  ───▶ │  Decoder · Debrief · Reverse · Admin                                     │
+  User's browser  ───▶ │  Decoder · Debrief · Reverse · Chat Lab · Admin                          │
   (mic, camera opt-in) │  In-browser only: MediaRecorder, Monaco + Pyodide, Excalidraw, MediaPipe │
                        └──────────────┬───────────────────────────────────────────────────────────┘
                                       │ HTTPS  (answer clip + duration, typed text, JWT)
@@ -100,8 +109,8 @@ The **timer lives in the backend**, not in the AI. Each chat call gets the elaps
 
 **Code layout** (from the repo):
 
-- `backend/app/services/` has one service per job: `fire.py`, `planning.py`, `interviewer.py`, `timer.py`, `scoring.py`, `reports.py`, `stories.py`, `limits.py`, `privacy.py`, `pressure.py`, `panel.py`, `negotiation.py`, `debriefs.py`, `reverse.py` and others.
-- `backend/app/prompts/` holds the 25 prompt templates, which are never written inline.
+- `backend/app/services/` has one service per job: `fire.py`, `planning.py`, `interviewer.py`, `timer.py`, `scoring.py`, `reports.py`, `stories.py`, `limits.py`, `privacy.py`, `pressure.py`, `panel.py`, `negotiation.py`, `debriefs.py`, `reverse.py`, `lab.py` (Chat Lab) and others.
+- `backend/app/prompts/` holds the 34 prompt templates, which are never written inline.
 - `frontend/src/pages/` and `frontend/src/components/` hold the React app.
 
 All Fire calls go through one client. It has a 60 s timeout and retries once, on a 5xx error or a network failure only (`services/fire.py`).
@@ -135,6 +144,8 @@ The work happened in 7 days with commits: Oct 6 (2 commits), Oct 8 (1), Oct 9 (2
 | 10-12 | Live checks | Results kept in rewrites, time-up cut-in, gap fit, invented links, off-subject stories, pressure tips | `5df3806`…`40c76f4` | T-107–T-116 |
 | 10-12 | Live checks | Praise filter, summaries, "Thanks" after a cut-off, metric words, leaked token, deleted-account tokens, rewrite repairs | `02e9a54`…`0c71871` | T-117–T-130 |
 | 10-13 | User reports | Project report; panel interviews with pressure mode; reverse-mode candidate voice; no pressure on coding and design questions; no "Thanks" in a pressure panel's handover; delete an interview from the dashboard; the app's own confirm dialog and a collapsible interview list | `7ebe5b8`, `faa5da5`, `f5e2da4`, `e98fdd5`, `0de7d62`, `c48ba2d` | T-132–T-137 |
+| 10-19 | User reports | Custom domain www.intervox.site; neutral exit after an off-topic answer; subject check for general questions; daily DuckDNS update | `c623edb`, `45404a6`, `82cd520` | T-138–T-143 |
+| 11-18 | **Chat Lab** | A chatbot page: prep chat, hiring-manager debate with a judge, model compare, editable agent settings; 10 calls per user per day; live budget back to $1 | `c62400b` | T-145, T-146 |
 
 Every server deploy after go-live went through a ticket with a deploy plan, a human `pm approve`, and the master agent pulling and rebuilding (§7).
 
@@ -320,7 +331,7 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 
 **Safety and budget guards** (`CLAUDE.md`, `config.py`, `services/limits.py`):
 
-- **Monthly Fire budget.** `check_budget()` blocks new Fire work once the month's total reaches `FIRE_MONTHLY_BUDGET_USD`: $1 by default, $1.45 for October 2026 on the live site. Spend is tracked from each response's `meta.price.usd`, per user and in an anonymous tally.
+- **Monthly Fire budget.** `check_budget()` blocks new Fire work once the month's total reaches `FIRE_MONTHLY_BUDGET_USD`: $1 by default; it was $1.45 for October 2026 on the live site and went back to $1 on 2026-11-18 (**T-145**). Spend is tracked from each response's `meta.price.usd`, per user and in an anonymous tally.
 - **Daily caps per user:**
 
   | Cap | Limit |
@@ -331,6 +342,7 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
   | Retries | 20 |
   | Decoder runs | 5 |
   | Signed-out decoder | 3 per person, 30 per day |
+  | Chat Lab calls | 10 (a chat uses 1, a compare 2, a debate 3; **T-146**) |
 
 - **The Fire key** lives only in the server's `.env` (root-only, mode 600). The browser never calls Fire.
 - **No audio or video stored.** Clips are dropped after transcription, and debrief accepts no recordings.
@@ -342,12 +354,13 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 
 ## 8. What's left and future plans
 
-- **November 2026:** set the live `FIRE_MONTHLY_BUDGET_USD` back from 1.45 to 1, through a master deploy ticket (**T-76**, `CLAUDE.md`).
+- **Done 2026-11-18:** the live `FIRE_MONTHLY_BUDGET_USD` went back from 1.45 to 1 (**T-145**; it had been left at 1.45 into November), deployed together with the Chat Lab (**T-146**).
+- **Chat Lab checked live on 2026-11-18** ($0.0019, temporary account deleted afterwards): the prep chat used only the résumé's facts and asked for a real example instead of inventing one; the debate and the judge (3/5, three reasons, one tip) worked; compare ran GPT-4o mini and Claude Haiku 4.5 side by side; a temperature of 2 was refused, and at 9 of 10 calls a compare was refused before any Fire call.
 - **Checked live on 2026-10-13:** panel with pressure (**T-132**), the reverse-mode voice (**T-133**), pressure-free coding questions (**T-134**), and an answer that names only the metric (**T-120/T-128**, Relevance 5). Deleting an interview (**T-136**): the live API refuses a signed-out delete (401) and another user's interview (404); no Fire calls. The reverse-mode voice was checked with a stand-in speech engine, so it shows the page speaks the answer, not how it sounds.
 - **Not yet seen in a live session:** T-117, T-126, T-127, T-129, T-130 and the panel handover wording (**T-135**). Their tests pass with Fire mocked, but the rewrite fixes only show up when the model words things a certain way. Also not yet clicked through on the live site: deleting one of your own interviews (**T-136**) and the new confirm dialog and collapsible list (**T-137**, checked in the built site with the API mocked, and in the live bundle).
 - **Phase 11 (optional):** real-time voice with LiveKit (interruptions, peer practice). **Phase 12 (optional):** a Hume EVI emotion experiment (`CLAUDE.md`). Neither has started.
 - **Oracle:** `DEPLOY.md` notes the stack can move to Oracle later with a backup and the same `.env`, "if Oracle ever works out".
-- **Open tickets:** none as of 2026-10-13. All 120 InterVox tickets are closed (95 problems, 21 ideas, 4 run tickets).
+- **Open tickets:** none as of 2026-11-18. All 127 InterVox tickets are closed (99 problems, 24 ideas, 4 run tickets).
 - *Unclear:*
   - The sources don't record total Fire spend for October; the live database couldn't be read from this session. The rules check and run tickets log individual check costs (for example ~$0.034, ~$0.05, $0.0744, $0.0768).
   - Ticket numbers are shared across the devbox. The gaps in InterVox's list (T-1–T-11, T-28, T-50, T-59, T-67, T-110, T-131) aren't InterVox tickets in the database, and the sources don't say what happened to them.

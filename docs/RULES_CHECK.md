@@ -143,5 +143,6 @@ Backend weak 2.11 (no hire) vs strong 3.86; sales weak 2.51 (no hire) vs strong 
 | Cost (hard rule 1) | ✅ | 10 calls/user/day reserved atomically before any Fire call (debate 3, compare 2, chat 1); monthly budget checked first; models limited to GPT-4o mini (default) and Claude Haiku 4.5; temperature ≤ 1; prompt/answer/system text ≤ 4,000 chars, documents ≤ 6,000, last 20 chat turns, replies ≤ 700 tokens. Tested: cap, per-user, budget, refusal before any call, failed calls given back. |
 | Privacy (hard rule 3) | ✅ | Nothing from the lab is stored; the browser keeps the conversation and the settings (localStorage). |
 | Fire key (hard rule 2) | ✅ | Every lab call goes through Flask (`services/lab.py` → `fire.py`). |
-| Live behavior | ⏳ | Fire is mocked in tests; a live check (one chat, one debate, one compare, about $0.01) waits for the user's OK. |
+| Live behavior | ✅ | Live check on 2026-11-18 after deploy, with a temporary account deleted afterwards ($0.0019 total): the prep chat gave 3 role-fit questions and a STAR outline built only from the résumé, then asked for a real example instead of inventing one; the debate gave a fair case for and a fair case against (no personal attacks) and the judge scored 3/5 with three reasons and one tip; compare answered with GPT-4o mini at 0 and Claude Haiku 4.5 at 1 side by side; temperature 2 was refused (400); at 9 of 10 calls a compare was refused (429) with no call made and usage stayed at 9. |
 
+**Open from this check:** none.
