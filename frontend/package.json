@@ -8,9 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:android": "VITE_API_URL=https://intervox.duckdns.org vite build && cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
     "@excalidraw/excalidraw": "^0.18.1",
     "@mediapipe/tasks-vision": "^1.1.0",
     "@monaco-editor/react": "^4.7.0",
@@ -20,6 +23,7 @@
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",

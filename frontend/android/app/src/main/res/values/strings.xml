@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">InterVox</string>
+    <string name="title_activity_main">InterVox</string>
+    <string name="package_name">site.intervox.app</string>
+    <string name="custom_url_scheme">site.intervox.app</string>
+</resources>
