@@ -150,3 +150,48 @@ def test_fire_fallback_off_or_without_a_speech_model(app, client, auth, planned,
     assert body["session"]["voice"]["fire_fallback"] is False
     assert body["speech"] is None
     assert fire.spoken == []
+
+
+def voice_replies_used() -> int:
+    return db.session.scalar(db.select(UsageLimit.voice_replies)) or 0
+
+
+def test_daily_voice_cap_turns_replies_text_only(app, client, auth, planned, fire):
+    """T-154: after DAILY_VOICE_REPLIES Fire-voiced replies, the rest are text."""
+    app.config["DAILY_VOICE_REPLIES"] = 2
+    sid = planned["id"]
+    res = client.post(f"/api/sessions/{sid}/start", json={"speak": True}, headers=auth)
+    assert res.get_json()["speech"] and res.get_json()["voice_capped"] is False
+    fire.turns = [
+        {"action": "follow_up", "message": "Why?"},
+        {"action": "follow_up", "message": "And then?"},
+    ]
+    say = {"text": "I led it.", "speak": True}
+    second = client.post(f"/api/sessions/{sid}/turns", json=say, headers=auth)
+    assert second.get_json()["speech"] and second.get_json()["voice_capped"] is False
+    assert voice_replies_used() == 2
+    spoken = len(fire.spoken)
+
+    third = client.post(f"/api/sessions/{sid}/turns", json=say, headers=auth)
+    body = third.get_json()
+    assert third.status_code == 200
+    assert body["turn"]["message"] == "And then?"  # the text reply still comes
+    assert body["speech"] is None and body["voice_capped"] is True
+    assert len(fire.spoken) == spoken  # no Fire speech call once capped
+    assert voice_replies_used() == 2
+
+
+def test_failed_speech_gives_the_voice_reply_back(app, client, auth, planned, fire):
+    sid = planned["id"]
+    fire.speech_error = FireError("No speech model")
+    res = client.post(f"/api/sessions/{sid}/start", json={"speak": True}, headers=auth)
+    assert res.get_json()["speech"] is None
+    assert res.get_json()["voice_capped"] is False
+    assert voice_replies_used() == 0
+
+
+def test_text_only_turns_do_not_use_voice_replies(app, client, auth, planned, fire):
+    sid = planned["id"]
+    assert started(client, auth, sid)
+    assert answer(client, auth, sid).get_json()["voice_capped"] is False
+    assert voice_replies_used() == 0

@@ -102,6 +102,10 @@ class UsageLimit(db.Model):
     lab_calls: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    # Interviewer replies spoken with Fire audio today (DAILY_VOICE_REPLIES, T-154).
+    voice_replies: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     fire_spend_usd: Mapped[float] = mapped_column(
         Numeric(10, 6, asdecimal=False), nullable=False, default=0
     )

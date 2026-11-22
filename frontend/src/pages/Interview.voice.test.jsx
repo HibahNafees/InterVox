@@ -351,6 +351,33 @@ describe('interviewer voice', () => {
     expect(JSON.parse(turn.opts.body).speak).toBe(true)
   })
 
+  it('stops asking for Fire audio once the daily voice cap is hit (T-154)', async () => {
+    vi.stubGlobal('Audio', class {
+      play() {
+        return Promise.resolve()
+      }
+      pause() {}
+    })
+    const fallback = { ...ACTIVE, voice: { provider: 'browser', persona: 'neutral', fire_fallback: true } }
+    const calls = routes(
+      {
+        'POST /api/sessions/7/turns': [
+          200,
+          { turn: TURN, session: { ...fallback, transcript: [ANSWERED, NEXT] }, speech: null, voice_capped: true },
+        ],
+      },
+      fallback,
+    )
+    renderInterview()
+    await userEvent.click(await screen.findByRole('button', { name: 'Record answer' }))
+    expect(await screen.findByText(/used today’s spoken replies/)).toHaveTextContent('text-only until tomorrow')
+    await userEvent.click(await screen.findByRole('button', { name: 'Record answer' }))
+    await vi.waitFor(() => expect(calls.filter((c) => c.key === 'POST /api/sessions/7/turns')).toHaveLength(2))
+    const [first, second] = calls.filter((c) => c.key === 'POST /api/sessions/7/turns')
+    expect(JSON.parse(first.opts.body).speak).toBe(true)
+    expect(JSON.parse(second.opts.body).speak).toBeUndefined()
+  })
+
   it('shows and speaks the closing line', async () => {
     const spoken = fakeSpeech()
     const closing = 'That covers everything. Thank you.'

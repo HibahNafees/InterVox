@@ -13,6 +13,7 @@ import { useBodyLanguage } from '../lib/useBodyLanguage'
 import { describeScene } from '../lib/whiteboard'
 import { answerModePref, canRecord, MAX_ANSWER_MS, setAnswerModePref } from '../lib/recording'
 import { useSmallScreen } from '../lib/useSmallScreen'
+import { isNativeApp } from '../lib/native'
 import { canSpeak, FILLERS, say, setVoicePref, usesFireVoice, voicePref, warmUpVoices } from '../lib/voice'
 
 function speaker(t, plan) {
@@ -173,7 +174,7 @@ function PlanStep({ session, setSession, onGreeting }) {
         ...(fire && voicePref() ? { body: { speak: true } } : {}),
       })
       // The first question is spoken once the interview screen is up.
-      onGreeting({ segments: data.session.transcript[0]?.segments, clips: data.speech })
+      onGreeting({ segments: data.session.transcript[0]?.segments, clips: data.speech, capped: data.voice_capped })
       setSession(data.session)
     } catch (err) {
       setError(err.message)
@@ -294,6 +295,8 @@ function LiveStep({ session, setSession, greeting }) {
   const [voiceOn, setVoiceOn] = useState(() => hasVoice && voicePref())
   const [speaking, setSpeaking] = useState(false)
   const [voiceFailed, setVoiceFailed] = useState(false)
+  // Today's Fire-voiced replies are used up (T-154): stop asking, say why.
+  const [voiceCapped, setVoiceCapped] = useState(() => Boolean(greeting?.capped))
   const [closing, setClosing] = useState(null)
   const voice = useRef(null) // what's playing now: { cancel }
   const panelRef = useRef(session.panel)
@@ -423,6 +426,7 @@ function LiveStep({ session, setSession, greeting }) {
   function handleReply(data) {
     // The interruption was said the moment time ran out; it stays in the transcript.
     const reply = { segments: unsaid(data.turn.segments), clips: data.speech }
+    if (data.voice_capped) setVoiceCapped(true)
     const next = data.session.status === 'active' ? questionReady : undefined
     if (data.turn.action === 'wrap_up') setClosing(data.turn.message)
     setSession(data.session)
@@ -527,7 +531,7 @@ function LiveStep({ session, setSession, greeting }) {
           ...meta,
           ...(work ? { work } : {}),
           ...(posture ? { body: posture } : {}),
-          ...(fireVoice && voiceOn ? { speak: true } : {}),
+          ...(fireVoice && voiceOn && !voiceCapped ? { speak: true } : {}),
         },
       })
       setText('')
@@ -677,6 +681,14 @@ function LiveStep({ session, setSession, greeting }) {
           <button type="button" onClick={stopSpeaking} className="btn-link">
             Stop
           </button>
+        </p>
+      )}
+      {voiceCapped && fireVoice && voiceOn && active && (
+        <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
+          You&rsquo;ve used today&rsquo;s spoken replies,{' '}
+          {canSpeak() && !isNativeApp()
+            ? 'so the interviewer uses your browser’s voice until tomorrow.'
+            : 'so the interviewer’s replies are text-only until tomorrow.'}
         </p>
       )}
       {voiceFailed && voiceOn && active && (

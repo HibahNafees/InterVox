@@ -69,6 +69,9 @@ class Config:
     DAILY_DECODER_RUNS = int(os.environ.get("DAILY_DECODER_RUNS", "5"))
     # Chat Lab calls per user per day: a chat costs 1, a compare 2, a debate 3.
     LAB_DAILY_CALLS = int(os.environ.get("LAB_DAILY_CALLS", "10"))
+    # Interviewer replies a user can hear as Fire audio per day (T-154); after that
+    # replies are text-only (or the browser's own voice). ~$0.0003 per short reply.
+    DAILY_VOICE_REPLIES = int(os.environ.get("DAILY_VOICE_REPLIES", "40"))
     # Signed-out decoder use: per visitor (IP) and across all visitors, per day.
     ANON_DECODER_RUNS = int(os.environ.get("ANON_DECODER_RUNS", "3"))
     ANON_DECODER_DAILY = int(os.environ.get("ANON_DECODER_DAILY", "30"))

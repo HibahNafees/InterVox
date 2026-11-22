@@ -429,8 +429,16 @@ def start(session_id: int):
     first = interviewer.start(session, user.name)
     limits.record_session_start(user_id, session.duration_min)
     speak = bool((request.get_json(silent=True) or {}).get("speak"))
-    speech = voice.synthesize(user_id, session, first.asked_segments) if speak else None
-    return jsonify(session=session_dict(session, detail=True), speech=speech)
+    speech, voice_capped = (
+        voice.synthesize(user_id, session, first.asked_segments)
+        if speak
+        else (None, False)
+    )
+    return jsonify(
+        session=session_dict(session, detail=True),
+        speech=speech,
+        voice_capped=voice_capped,
+    )
 
 
 @bp.post("/<int:session_id>/turns")
@@ -464,9 +472,14 @@ def turn(session_id: int):
     )
     # The interruption was already said in the browser when time ran out.
     to_say = [s for s in result["segments"] if not s.get("interruption")]
-    speech = voice.synthesize(user_id, session, to_say) if body.speak else None
+    speech, voice_capped = (
+        voice.synthesize(user_id, session, to_say) if body.speak else (None, False)
+    )
     return jsonify(
-        turn=result, session=session_dict(session, detail=True), speech=speech
+        turn=result,
+        session=session_dict(session, detail=True),
+        speech=speech,
+        voice_capped=voice_capped,
     )
 
 

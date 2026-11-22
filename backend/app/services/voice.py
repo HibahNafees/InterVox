@@ -13,7 +13,13 @@ from flask import current_app
 
 from ..models import Session
 from .fire import FireError, get_fire
-from .limits import LimitReached, check_budget, record_fire_call
+from .limits import (
+    LimitReached,
+    check_budget,
+    record_fire_call,
+    release_voice_reply,
+    reserve_voice_reply,
+)
 
 log = logging.getLogger(__name__)
 
@@ -54,21 +60,33 @@ def info(session: Session) -> dict:
 
 def synthesize(
     user_id: int, session: Session, segments: list[dict]
-) -> list[dict] | None:
-    """Fire audio for each segment, or None to let the browser speak the text.
+) -> tuple[list[dict] | None, bool]:
+    """(clips, capped): Fire audio for each segment, or None to let the browser
+    speak the text; `capped` is True when today's DAILY_VOICE_REPLIES are used up
+    (T-154), so the client can say why replies went text-only.
 
     Only called when the client asked (`speak`); it gets audio with
     VOICE_PROVIDER=fire, or as the fallback for a client that can't speak.
 
-    Voice is a nice-to-have on top of the text reply: an over-budget month or a
-    failed speech call never fails the turn.
+    Voice is a nice-to-have on top of the text reply: an over-budget month, the
+    daily cap or a failed speech call never fails the turn.
     """
     if not segments or (provider() != "fire" and not fire_fallback()):
-        return None
+        return None, False
     try:
         check_budget()
     except LimitReached:
-        return None
+        return None, False
+    if not reserve_voice_reply(user_id):
+        return None, True
+    clips = _speak(user_id, session, segments)
+    if clips is None:
+        release_voice_reply(user_id)
+    return clips, False
+
+
+def _speak(user_id: int, session: Session, segments: list[dict]) -> list[dict] | None:
+    """One Fire speech call per segment; None if any of them fails."""
     voices = current_app.config.get("FIRE_VOICES", {})
     persona = session.persona or "neutral"
     model = current_app.config.get("FIRE_SPEECH_MODEL")

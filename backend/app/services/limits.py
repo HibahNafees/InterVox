@@ -32,6 +32,7 @@ def _row(user_id: int) -> UsageLimit:
             sessions_count=0,
             decoder_runs=0,
             lab_calls=0,
+            voice_replies=0,
             fire_spend_usd=0,
         )
         db.session.add(row)
@@ -227,6 +228,43 @@ def release_lab_calls(user_id: int, calls: int) -> None:
                 (UsageLimit.lab_calls > calls, UsageLimit.lab_calls - calls), else_=0
             )
         )
+        .execution_options(synchronize_session=False)
+    )
+    db.session.commit()
+
+
+def reserve_voice_reply(user_id: int) -> bool:
+    """Take one of today's Fire-voiced replies before any speech call (T-154).
+
+    One conditional UPDATE, like the Chat Lab cap, so parallel turns can't both pass
+    it. False once today's DAILY_VOICE_REPLIES are used: the reply goes out as text."""
+    cap = current_app.config["DAILY_VOICE_REPLIES"]
+    _row(user_id)
+    db.session.commit()
+    taken = db.session.execute(
+        db.update(UsageLimit)
+        .where(
+            UsageLimit.user_id == user_id,
+            UsageLimit.date == today(),
+            UsageLimit.voice_replies + 1 <= cap,
+        )
+        .values(voice_replies=UsageLimit.voice_replies + 1)
+        .execution_options(synchronize_session=False)
+    ).rowcount
+    db.session.commit()
+    return bool(taken)
+
+
+def release_voice_reply(user_id: int) -> None:
+    """Give back a reserved reply whose audio never arrived (Fire speech failed)."""
+    db.session.execute(
+        db.update(UsageLimit)
+        .where(
+            UsageLimit.user_id == user_id,
+            UsageLimit.date == today(),
+            UsageLimit.voice_replies > 0,
+        )
+        .values(voice_replies=UsageLimit.voice_replies - 1)
         .execution_options(synchronize_session=False)
     )
     db.session.commit()

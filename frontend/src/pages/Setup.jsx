@@ -219,7 +219,9 @@ export default function Setup() {
           ...(fire ? { body: { speak: true } } : {}),
         })
         navigate(`/interview/${session.id}`, {
-          state: { greeting: { segments: data.session.transcript[0]?.segments, clips: data.speech } },
+          state: {
+            greeting: { segments: data.session.transcript[0]?.segments, clips: data.speech, capped: data.voice_capped },
+          },
         })
       } catch {
         // e.g. a daily cap: the plan screen shows the reason when they press Start.
