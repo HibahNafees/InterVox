@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth'
 export default function Account() {
   const { user, logout } = useAuth()
   const [password, setPassword] = useState('')
+  // A Google-only account has no password: it confirms with its email (T-156).
+  const googleOnly = user?.has_password === false
   const [sure, setSure] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -14,7 +16,7 @@ export default function Account() {
     setError('')
     setBusy(true)
     try {
-      await api('/auth/me', { method: 'DELETE', body: { password } })
+      await api('/auth/me', { method: 'DELETE', body: googleOnly ? { email: password } : { password } })
       logout('Your account and all its data were deleted.')
     } catch (err) {
       setError(err.message)
@@ -49,10 +51,10 @@ export default function Account() {
           </p>
         </div>
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">Your password</span>
+          <span className="font-medium text-slate-700">{googleOnly ? 'Type your email to confirm' : 'Your password'}</span>
           <input
-            type="password"
-            autoComplete="current-password"
+            type={googleOnly ? 'email' : 'password'}
+            autoComplete={googleOnly ? 'off' : 'current-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 block w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2"

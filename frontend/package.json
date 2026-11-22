@@ -14,6 +14,7 @@
   "dependencies": {
     "@capacitor/android": "^8.6.2",
     "@capacitor/core": "^8.6.2",
+    "@capgo/capacitor-social-login": "8.7.7",
     "@excalidraw/excalidraw": "^0.18.1",
     "@mediapipe/tasks-vision": "^1.1.0",
     "@monaco-editor/react": "^4.7.0",

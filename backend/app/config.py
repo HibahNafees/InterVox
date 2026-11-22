@@ -72,6 +72,14 @@ class Config:
     # Interviewer replies a user can hear as Fire audio per day (T-154); after that
     # replies are text-only (or the browser's own voice). ~$0.0003 per short reply.
     DAILY_VOICE_REPLIES = int(os.environ.get("DAILY_VOICE_REPLIES", "40"))
+    # Sign in with Google (T-156): the OAuth Web client id from Google Cloud Console
+    # (public, not a secret). Empty = the Google button is hidden. Extra ids may
+    # follow, comma-separated, if another client's ID tokens must be accepted.
+    GOOGLE_CLIENT_IDS = [
+        c.strip()
+        for c in os.environ.get("GOOGLE_CLIENT_IDS", "").split(",")
+        if c.strip()
+    ]
     # Signed-out decoder use: per visitor (IP) and across all visitors, per day.
     ANON_DECODER_RUNS = int(os.environ.get("ANON_DECODER_RUNS", "3"))
     ANON_DECODER_DAILY = int(os.environ.get("ANON_DECODER_DAILY", "30"))

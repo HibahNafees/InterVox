@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from ..extensions import db
 from ..models import User
-from ..services import admin, privacy, ratelimit
+from ..services import admin, google_auth, privacy, ratelimit
 from .common import first_error
 
 bp = Blueprint("auth", __name__)
@@ -88,13 +88,52 @@ def login():
     user = db.session.scalar(
         db.select(User).filter_by(email=body.email.strip().lower())
     )
+    if user is not None and not user.password_hash:
+        return (
+            jsonify(
+                error="This account signs in with Google: use Continue with Google."
+            ),
+            401,
+        )
     if user is None or not user.check_password(body.password):
         return jsonify(error="Incorrect email or password"), 401
     return _token_response(user)
 
 
+@bp.get("/providers")
+def providers():
+    """Which sign-in options the login page can offer."""
+    return jsonify(google_client_id=google_auth.web_client_id())
+
+
+class GoogleBody(BaseModel):
+    credential: str = Field(min_length=20, max_length=8192)
+
+
+@bp.post("/google")
+def google():
+    """Sign up or log in with a Google ID token (T-156)."""
+    if not google_auth.client_ids():
+        return jsonify(error="Google sign-in isn't available"), 404
+    if not ratelimit.allow("google", 20, 300):
+        return jsonify(error=TOO_MANY), 429
+    try:
+        body = GoogleBody.model_validate(request.get_json(silent=True) or {})
+    except ValidationError:
+        return jsonify(error="Google sign-in didn't work. Please try again."), 400
+    try:
+        claims = google_auth.verify(body.credential)
+    except google_auth.GoogleAuthError as err:
+        return jsonify(error=err.message), 401
+    user, created = google_auth.find_or_create(claims)
+    return _token_response(user, 201 if created else 200)
+
+
 class DeleteBody(BaseModel):
-    password: str = Field(min_length=1, max_length=200)
+    # A password account confirms with its password; a Google-only account
+    # (no password, T-156) types its email instead.
+    password: str = Field(default="", max_length=200)
+    email: str = Field(default="", max_length=255)
 
 
 @bp.delete("/me")
@@ -110,8 +149,13 @@ def delete_me():
         return jsonify(error="Account not found"), 404
     if not ratelimit.allow("delete", 5, 900, key=str(user.id)):
         return jsonify(error=TOO_MANY), 429
-    if not user.check_password(body.password):
-        return jsonify(error="Incorrect password"), 403
+    if user.password_hash:
+        if not body.password:
+            return jsonify(error="Enter your password to confirm"), 400
+        if not user.check_password(body.password):
+            return jsonify(error="Incorrect password"), 403
+    elif body.email.strip().lower() != user.email:
+        return jsonify(error="Type your account's email to confirm"), 403
     privacy.delete_user(user.id)
     return jsonify(ok=True)
 

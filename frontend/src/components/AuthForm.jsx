@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HeroScene } from './Art'
+import GoogleSignIn from './GoogleSignIn'
 import { Logo } from './Layout'
 import ThemeToggle from './ThemeToggle'
 
@@ -49,6 +50,7 @@ export default function AuthForm({ title, fields, submitLabel, onSubmit, footer,
             {notice}
           </p>
         )}
+        <GoogleSignIn onError={setError} />
         {fields.map((f) => (
           <label key={f.name} className="block text-sm">
             <span className="font-medium text-slate-700">{f.label}</span>

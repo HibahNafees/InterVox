@@ -10,9 +10,12 @@ has no Android SDK). Ticket: T-147.
   `CORS_ORIGINS` (`localhost` origins are refused in production). Nothing is hosted at
   that name; it only labels the app's origin.
 - **Permissions:** microphone (answers), camera (opt-in body language), internet.
-- **Interviewer voice:** Android WebView has no Web Speech synthesis, so the browser
-  voice is unavailable in the app and replies stay text. Fire voice (`VOICE_PROVIDER=fire`)
-  still plays.
+- **Interviewer voice:** Android WebView has no Web Speech synthesis, so the app asks the
+  API for Fire audio of each reply (`VOICE_FIRE_FALLBACK`, T-148), up to
+  `DAILY_VOICE_REPLIES` per user per day (T-154); after that, replies are text-only.
+- **Google sign-in:** native account picker via `@capgo/capacitor-social-login`
+  (T-156). Needs an *Android* OAuth client in Google Cloud with package
+  `site.intervox.app` and the release keystore's SHA-1; see `docs/GOOGLE_SIGN_IN.md`.
 - **Signing:** `android/app/build.gradle` reads `~/.intervox/keystore.properties`
   (override with `INTERVOX_KEYSTORE_PROPERTIES`). The keystore and its passwords never
   go in the repo; `*.jks`, `*.keystore` and `keystore.properties` are gitignored.

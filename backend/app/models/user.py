@@ -13,7 +13,12 @@ class User(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # None for an account made with Google sign-in (T-156).
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Google's stable account id ("sub"), set on first Google sign-in.
+    google_sub: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     created_at: Mapped[datetime] = created_at_column()
     # Practice goal: mock interviews per week.
@@ -25,6 +30,8 @@ class User(db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password: str) -> bool:
+        if not self.password_hash:
+            return False
         return check_password_hash(self.password_hash, password)
 
     def to_dict(self) -> dict:
@@ -32,5 +39,7 @@ class User(db.Model):
             "id": self.id,
             "email": self.email,
             "name": self.name,
+            "has_password": bool(self.password_hash),
+            "google": bool(self.google_sub),
             "created_at": self.created_at.isoformat() + "Z",
         }

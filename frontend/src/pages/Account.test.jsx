@@ -52,6 +52,21 @@ describe('account', () => {
     expect(localStorage.getItem('mi_token')).toBeNull()
   })
 
+  it('a Google-only account confirms by typing its email (T-156)', async () => {
+    const user = userEvent.setup()
+    const fetch = respond({
+      'GET /api/auth/me': [200, { user: { ...ADA, has_password: false, google: true } }],
+      'DELETE /api/auth/me': [200, { ok: true }],
+      'GET /api/auth/providers': [200, { google_client_id: null }],
+    })
+    renderAt('/account')
+    await user.type(await screen.findByLabelText('Type your email to confirm'), 'ada@example.com')
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'Delete everything' }))
+    const [, opts] = fetch.mock.calls.find(([, o]) => o?.method === 'DELETE')
+    expect(JSON.parse(opts.body)).toEqual({ email: 'ada@example.com' })
+  })
+
   it('shows a wrong password', async () => {
     const user = userEvent.setup()
     respond({

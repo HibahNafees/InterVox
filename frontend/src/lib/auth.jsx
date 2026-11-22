@@ -37,6 +37,12 @@ export function AuthProvider({ children }) {
     [handleAuth],
   )
 
+  // Sign in with Google (T-156): a Google ID token for an InterVox session.
+  const googleLogin = useCallback(
+    async (credential) => handleAuth(await api('/auth/google', { method: 'POST', body: { credential } })),
+    [handleAuth],
+  )
+
   const logout = useCallback((message = '') => {
     setToken(null)
     setUser(null)
@@ -44,7 +50,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, notice }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, googleLogin, logout, notice }}>
       {children}
     </AuthContext.Provider>
   )
