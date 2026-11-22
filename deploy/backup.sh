@@ -4,8 +4,11 @@
 #   0 3 * * * /srv/intervox/deploy/backup.sh >> /var/log/intervox-backup.log 2>&1
 # Oracle VM: 0 3 * * * $HOME/InterVox/deploy/backup.sh
 set -euo pipefail
+# Dumps hold user data: root-only files (600) in a root-only folder (700) (T-155).
+umask 077
 cd "$(dirname "$0")/.."
 mkdir -p "$HOME/backups"
+chmod 700 "$HOME/backups"
 out="$HOME/backups/db-$(date +%F).sql.gz"
 tmp="$out.partial"
 # A failed dump must not replace a good backup or count towards the 14 kept.
