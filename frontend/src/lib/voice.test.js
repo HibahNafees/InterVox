@@ -1,6 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ALEX, SAM, fakeSpeech } from '../test-speech'
-import { panelVoices, pickVoices, playClips, say, sentences, speakSegments, voicePref, setVoicePref } from './voice'
+import { isNativeApp } from './native'
+import {
+  panelVoices,
+  pickVoices,
+  playClips,
+  say,
+  sentences,
+  speakSegments,
+  usesFireVoice,
+  voicePref,
+  setVoicePref,
+} from './voice'
+
+vi.mock('./native', () => ({ isNativeApp: vi.fn(() => false) }))
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -126,5 +139,29 @@ describe('Fire voice', () => {
     await vi.waitFor(() => expect(spoken.map((u) => u.text)).toEqual(['Tell me about Acme.']))
     spoken[0].onend()
     await handle.done
+  })
+})
+
+describe('Fire voice fallback (T-148)', () => {
+  const browser = { provider: 'browser', fire_fallback: true }
+
+  it('uses Fire when the server says so', () => {
+    expect(usesFireVoice({ provider: 'fire' })).toBe(true)
+  })
+
+  it('uses Fire only where the browser cannot speak', () => {
+    expect(usesFireVoice(browser)).toBe(true) // jsdom: no speechSynthesis
+    fakeSpeech()
+    expect(usesFireVoice(browser)).toBe(false)
+    expect(usesFireVoice({ ...browser, fire_fallback: false })).toBe(false)
+    expect(usesFireVoice(undefined)).toBe(false)
+  })
+
+  it('always uses Fire in the Android app when the fallback is on', () => {
+    fakeSpeech()
+    isNativeApp.mockReturnValue(true)
+    expect(usesFireVoice(browser)).toBe(true)
+    expect(usesFireVoice({ ...browser, fire_fallback: false })).toBe(false)
+    isNativeApp.mockReturnValue(false)
   })
 })

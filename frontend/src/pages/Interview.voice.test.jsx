@@ -320,6 +320,37 @@ describe('interviewer voice', () => {
     expect(JSON.parse(turn.opts.body).speak).toBe(true)
   })
 
+  it('asks for Fire audio where the browser cannot speak (T-148)', async () => {
+    // No fakeSpeech(): jsdom has no speechSynthesis, like the Android WebView.
+    const played = []
+    vi.stubGlobal('Audio', class {
+      constructor(src) {
+        played.push(src)
+      }
+      play() {
+        return Promise.resolve()
+      }
+      pause() {}
+    })
+    const fallback = { ...ACTIVE, voice: { provider: 'browser', persona: 'neutral', fire_fallback: true } }
+    const clip = { who: 'interviewer', audio: 'data:audio/mpeg;base64,AA' }
+    const calls = routes(
+      {
+        'POST /api/sessions/7/turns': [
+          200,
+          { turn: TURN, session: { ...fallback, transcript: [ANSWERED, NEXT] }, speech: [clip] },
+        ],
+      },
+      fallback,
+    )
+    renderInterview()
+    await userEvent.click(await screen.findByRole('button', { name: 'Record answer' }))
+    await screen.findByText('What was your part?')
+    await vi.waitFor(() => expect(played).toEqual([clip.audio]))
+    const turn = calls.find((c) => c.key === 'POST /api/sessions/7/turns')
+    expect(JSON.parse(turn.opts.body).speak).toBe(true)
+  })
+
   it('shows and speaks the closing line', async () => {
     const spoken = fakeSpeech()
     const closing = 'That covers everything. Thank you.'

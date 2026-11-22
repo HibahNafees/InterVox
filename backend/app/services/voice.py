@@ -3,7 +3,8 @@
 By default the browser speaks each message with its own free voices
 (VOICE_PROVIDER=browser) and Flask does nothing. With VOICE_PROVIDER=fire, Flask
 asks Fire /v1/speech for each speaker segment and returns the audio in the same
-response; interviewer audio is never stored.
+response; interviewer audio is never stored. With VOICE_FIRE_FALLBACK on, a client
+that has no speech of its own (the Android app) asks for Fire audio too (T-148).
 """
 
 import logging
@@ -34,9 +35,21 @@ def provider() -> str:
     return name if name in PROVIDERS else "browser"
 
 
+def fire_fallback() -> bool:
+    """Whether a client without its own speech may ask for Fire audio."""
+    return bool(
+        current_app.config.get("VOICE_FIRE_FALLBACK")
+        and current_app.config.get("FIRE_SPEECH_MODEL")
+    )
+
+
 def info(session: Session) -> dict:
     """What the browser needs to pick and style the voices."""
-    return {"provider": provider(), "persona": session.persona or "neutral"}
+    return {
+        "provider": provider(),
+        "persona": session.persona or "neutral",
+        "fire_fallback": fire_fallback(),
+    }
 
 
 def synthesize(
@@ -44,10 +57,13 @@ def synthesize(
 ) -> list[dict] | None:
     """Fire audio for each segment, or None to let the browser speak the text.
 
+    Only called when the client asked (`speak`); it gets audio with
+    VOICE_PROVIDER=fire, or as the fallback for a client that can't speak.
+
     Voice is a nice-to-have on top of the text reply: an over-budget month or a
     failed speech call never fails the turn.
     """
-    if provider() != "fire" or not segments:
+    if not segments or (provider() != "fire" and not fire_fallback()):
         return None
     try:
         check_budget()

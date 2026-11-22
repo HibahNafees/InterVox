@@ -32,6 +32,10 @@ class Config:
     # Interviewer voice: "browser" (free Web Speech API in the browser) or "fire"
     # (Fire /v1/speech, billed per turn).
     VOICE_PROVIDER = os.environ.get("VOICE_PROVIDER", "browser")
+    # With the browser voice, a client that can't speak (the Android app's WebView
+    # has no Web Speech synthesis) may still ask for Fire audio (T-148). Same budget
+    # guard as VOICE_PROVIDER=fire; set to 0 to keep those clients text-only.
+    VOICE_FIRE_FALLBACK = os.environ.get("VOICE_FIRE_FALLBACK", "1") == "1"
     # Pinned so a change to Fire's default speech model can't raise the cost;
     # Kokoro is Fire's cheapest one.
     FIRE_SPEECH_MODEL = os.environ.get("FIRE_SPEECH_MODEL", "tts-kokoro")

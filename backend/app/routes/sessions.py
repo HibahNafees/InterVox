@@ -89,7 +89,8 @@ class TurnBody(BaseModel):
         default=None, ge=0, le=MAX_ANSWER_MS + DURATION_SLACK_MS
     )
     input_mode: Literal["text", "voice"] = "text"
-    # Ask for Fire audio of the reply (only used when VOICE_PROVIDER=fire).
+    # Ask for Fire audio of the reply (VOICE_PROVIDER=fire, or a client with no
+    # speech of its own when VOICE_FIRE_FALLBACK is on: T-148).
     speak: bool = False
     # Code from the editor or the whiteboard sketch (coding / system design).
     work: WorkIn | None = None

@@ -3,6 +3,8 @@
 // fire: Flask returns Fire audio clips per speaker segment; they play in order, and
 // the browser voice takes over if a clip can't play.
 
+import { isNativeApp } from './native'
+
 const PREF_KEY = 'mi_voice'
 
 // Persona → how the interviewer sounds. The role-play character gets its own voice.
@@ -23,6 +25,14 @@ export function canSpeak() {
     'speechSynthesis' in window &&
     typeof window.SpeechSynthesisUtterance === 'function'
   )
+}
+
+// Whether this device should ask Flask for Fire audio: always with
+// VOICE_PROVIDER=fire, and as the fallback (T-148) where the browser can't speak.
+// The Android app's WebView has no reliable speech of its own, so it always uses Fire.
+export function usesFireVoice(voice) {
+  if (voice?.provider === 'fire') return true
+  return Boolean(voice?.fire_fallback) && (isNativeApp() || !canSpeak())
 }
 
 export function voicePref() {

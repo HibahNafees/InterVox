@@ -6,7 +6,8 @@ import GapAnalysis from '../components/GapAnalysis'
 import QuestionsCoach from '../components/QuestionsCoach'
 import { api } from '../lib/api'
 import { answerModePref, canRecord, setAnswerModePref } from '../lib/recording'
-import { voicePref } from '../lib/voice'
+import { HANDS_ON, useSmallScreen } from '../lib/useSmallScreen'
+import { usesFireVoice, voicePref } from '../lib/voice'
 
 const DURATIONS = [10, 30, 45, 60]
 const NEGOTIATION_DURATIONS = [5, 10, 15, 20]
@@ -99,6 +100,7 @@ function HandsOnCount({ label, name, presets, value, onChange, autoNote }) {
 
 export default function Setup() {
   const navigate = useNavigate()
+  const small = useSmallScreen()
   const [resumeId, setResumeId] = useState(null)
   const [jdId, setJdId] = useState(null)
   const [duration, setDuration] = useState(10)
@@ -133,7 +135,10 @@ export default function Setup() {
       live = false
     }
   }, [jdId])
-  const offered = job.status === 'ready' ? job.modules : []
+  const allModules = job.status === 'ready' ? job.modules : []
+  // Phones get no coding or whiteboard rounds: both need a bigger screen (T-150).
+  const offered = small ? allModules.filter((m) => !HANDS_ON.includes(m.name)) : allModules
+  const handsOnHidden = small && allModules.some((m) => HANDS_ON.includes(m.name))
   // A type that fit the previous job description may not fit this one.
   const chosen = focus === 'mixed' || offered.some((m) => m.name === focus) ? focus : 'mixed'
   const negotiating = format === 'negotiation'
@@ -154,8 +159,9 @@ export default function Setup() {
   // design question; a round the plan decides needs 8 or 10. A mixed interview
   // keeps 2 minutes for everything else.
   const spare = chosen === 'coding' ? length : length - 2
-  const codingCount = offersCoding && codingProblems !== 'auto' ? codingProblems : null
-  const designCount = offersDesign && design !== 'auto' ? design : null
+  const hidden = (name) => small && allModules.some((m) => m.name === name)
+  const codingCount = hidden('coding') ? 0 : offersCoding && codingProblems !== 'auto' ? codingProblems : null
+  const designCount = hidden('system_design') ? 0 : offersDesign && design !== 'auto' ? design : null
   const chosenMinutes = (codingCount ?? 0) * 4 + (designCount ?? 0) * 5
   const countsFit = chosenMinutes <= spare || (chosen === 'coding' && codingCount === 1)
   const autoCodingFits = chosen === 'coding' || spare - (designCount ?? 0) * 5 >= 8
@@ -207,7 +213,7 @@ export default function Setup() {
       }
       // Skip the plan screen: start now and greet on the interview page.
       try {
-        const fire = session.voice?.provider === 'fire' && voicePref()
+        const fire = usesFireVoice(session.voice) && voicePref()
         const data = await api(`/sessions/${session.id}/start`, {
           method: 'POST',
           ...(fire ? { body: { speak: true } } : {}),
@@ -327,6 +333,11 @@ export default function Setup() {
               ? 'A realistic loop mixing the formats that fit this job.'
               : offered.find((m) => m.name === chosen)?.blurb}
           </p>
+          {handsOnHidden && (
+            <p className="text-sm text-slate-500">
+              Coding and whiteboard rounds need a bigger screen; open InterVox on a computer for them.
+            </p>
+          )}
         </section>
       )}
 

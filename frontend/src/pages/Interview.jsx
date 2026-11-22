@@ -12,7 +12,8 @@ import { characterName, moduleOf, scenarioFor } from '../lib/modules'
 import { useBodyLanguage } from '../lib/useBodyLanguage'
 import { describeScene } from '../lib/whiteboard'
 import { answerModePref, canRecord, MAX_ANSWER_MS, setAnswerModePref } from '../lib/recording'
-import { canSpeak, FILLERS, say, setVoicePref, voicePref, warmUpVoices } from '../lib/voice'
+import { useSmallScreen } from '../lib/useSmallScreen'
+import { canSpeak, FILLERS, say, setVoicePref, usesFireVoice, voicePref, warmUpVoices } from '../lib/voice'
 
 function speaker(t, plan) {
   const scenario = scenarioFor(plan, t.section)
@@ -166,7 +167,7 @@ function PlanStep({ session, setSession, onGreeting }) {
     setError('')
     setBusy(true)
     try {
-      const fire = session.voice?.provider === 'fire'
+      const fire = usesFireVoice(session.voice)
       const data = await api(`/sessions/${session.id}/start`, {
         method: 'POST',
         ...(fire && voicePref() ? { body: { speak: true } } : {}),
@@ -286,7 +287,8 @@ function LiveStep({ session, setSession, greeting }) {
   const modeRef = useRef(mode)
   modeRef.current = mode
   const said = useRef(0) // which speak() call is current
-  const fireVoice = session.voice?.provider === 'fire'
+  const fireVoice = usesFireVoice(session.voice)
+  const small = useSmallScreen() // no whiteboard on a phone (T-150)
   const persona = session.voice?.persona ?? session.persona
   const hasVoice = canSpeak() || fireVoice
   const [voiceOn, setVoiceOn] = useState(() => hasVoice && voicePref())
@@ -716,6 +718,11 @@ function LiveStep({ session, setSession, greeting }) {
             <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
               {tool === 'code' ? (
                 <CodePad code={code} onChange={setCode} />
+              ) : small ? (
+                <section className="card p-4 text-sm text-slate-600" aria-label="Whiteboard">
+                  <span aria-hidden="true">🧩 </span>The whiteboard needs a bigger screen. Talk through your design
+                  instead: the main parts, how data moves between them, and the trade-offs.
+                </section>
               ) : (
                 <Whiteboard key={workFor} onChange={(elements) => (board.current = elements)} />
               )}

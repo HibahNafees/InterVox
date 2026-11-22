@@ -22,12 +22,19 @@ def use_fire_voice(app, **voices):
     app.config["FIRE_VOICES"] = voices
 
 
-def test_browser_voice_is_the_default_and_never_calls_fire(client, auth, planned, fire):
+def test_browser_voice_is_the_default_and_never_calls_fire(
+    app, client, auth, planned, fire
+):
+    app.config["VOICE_FIRE_FALLBACK"] = False
     sid = planned["id"]
     res = client.post(f"/api/sessions/{sid}/start", json={"speak": True}, headers=auth)
     body = res.get_json()
     assert body["speech"] is None
-    assert body["session"]["voice"] == {"provider": "browser", "persona": "friendly"}
+    assert body["session"]["voice"] == {
+        "provider": "browser",
+        "persona": "friendly",
+        "fire_fallback": False,
+    }
     first = body["session"]["transcript"][0]
     assert first["segments"] == [{"who": "interviewer", "text": first["interviewer"]}]
 
@@ -111,4 +118,35 @@ def test_no_fire_speech_once_the_monthly_budget_is_used(app, client, auth, docs,
         f"/api/sessions/{sid}/turns", json={"text": "Hi.", "speak": True}, headers=auth
     )
     assert r.get_json()["speech"] is None
+    assert fire.spoken == []
+
+
+def test_fire_fallback_speaks_for_a_client_without_speech(
+    app, client, auth, planned, fire
+):
+    """T-148: the Android app has no browser voice, so it asks for Fire audio."""
+    sid = planned["id"]
+    res = client.post(f"/api/sessions/{sid}/start", json={"speak": True}, headers=auth)
+    body = res.get_json()
+    assert body["session"]["voice"]["provider"] == "browser"
+    assert body["session"]["voice"]["fire_fallback"] is True
+    assert body["speech"][0]["audio"].startswith("data:audio/mpeg;base64,")
+    assert fire.speech_models == ["tts-kokoro"]
+    assert db.session.scalar(db.select(UsageLimit.fire_spend_usd)) > 0
+
+
+def test_fire_fallback_still_only_when_asked(app, client, auth, planned, fire):
+    sid = planned["id"]
+    assert started(client, auth, sid)
+    assert answer(client, auth, sid).get_json()["speech"] is None
+    assert fire.spoken == []
+
+
+def test_fire_fallback_off_or_without_a_speech_model(app, client, auth, planned, fire):
+    app.config["FIRE_SPEECH_MODEL"] = ""
+    sid = planned["id"]
+    res = client.post(f"/api/sessions/{sid}/start", json={"speak": True}, headers=auth)
+    body = res.get_json()
+    assert body["session"]["voice"]["fire_fallback"] is False
+    assert body["speech"] is None
     assert fire.spoken == []
