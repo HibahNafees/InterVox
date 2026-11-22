@@ -826,7 +826,7 @@ function Summary({ report }) {
     <div className="space-y-4">
       <div className="card flex flex-wrap items-center gap-6 p-6">
         <ScoreRing value={report.overall_score} />
-        <div className="min-w-0 flex-1 space-y-2">
+        <div className="min-w-0 flex-1 basis-60 space-y-2">
           <p className="eyebrow">Overall</p>
           <span className={`inline-block rounded-full px-3 py-1 text-sm font-bold ${color}`}>{label}</span>
           {report.verdict_reason && <p className="text-slate-700">{report.verdict_reason}</p>}

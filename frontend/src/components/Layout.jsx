@@ -1,6 +1,8 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Mascot } from './Art'
+import InstallApp from './InstallApp'
 import ThemeToggle from './ThemeToggle'
 
 const NAV = [
@@ -15,7 +17,7 @@ const NAV = [
 
 // `onColor` is for coloured backgrounds (the sign-in panel), where the coral
 // "Vox" would disappear.
-export function Logo({ onColor = false }) {
+export function Logo({ onColor = false, compact = false }) {
   return (
     <span className="flex items-center gap-2">
       <Mascot className="h-10 w-10" />
@@ -24,7 +26,7 @@ export function Logo({ onColor = false }) {
           Inter
           <span className={onColor ? 'text-night' : 'text-brand-500'}>Vox</span>
         </span>
-        <span className={`text-xs font-medium ${onColor ? 'text-white/90' : 'text-ink/70'}`}>
+        <span className={`text-xs font-medium ${compact ? 'hidden sm:block' : ''} ${onColor ? 'text-white/90' : 'text-ink/70'}`}>
           AI voice practice interviews for any job
         </span>
       </span>
@@ -34,21 +36,29 @@ export function Logo({ onColor = false }) {
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+  // Phones: the nav folds behind a Menu button and closes after each move (T-150).
+  useEffect(() => setMenuOpen(false), [pathname])
   return (
     <div className="min-h-screen text-slate-800">
-      <header className="sticky top-0 z-10 border-b border-line bg-cream/85 backdrop-blur-md print:hidden">
+      <header className="sticky top-0 z-10 border-b border-line bg-cream/85 pt-[env(safe-area-inset-top)] backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
           <Link to="/" aria-label="InterVox home">
-            <Logo />
+            <Logo compact />
           </Link>
-          <nav className="flex flex-wrap gap-0.5 text-sm">
+          <nav
+            id="main-nav"
+            aria-label="Main"
+            className={`${menuOpen ? 'flex' : 'hidden'} order-last w-full flex-col gap-0.5 text-sm sm:order-none sm:flex sm:w-auto sm:flex-row sm:flex-wrap`}
+          >
             {[...NAV, ...(user?.is_admin ? [['/admin', 'Admin']] : [])].map(([to, label]) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === '/'}
                 className={({ isActive }) =>
-                  `rounded-full px-2.5 py-1.5 font-medium transition ${
+                  `rounded-full px-3 py-2.5 font-medium transition sm:px-2.5 sm:py-1.5 ${
                     isActive ? 'bg-brand-100 text-brand-700' : 'text-slate-600 hover:bg-surface hover:text-slate-900'
                   }`
                 }
@@ -56,9 +66,20 @@ export default function Layout() {
                 {label}
               </NavLink>
             ))}
+            {user && (
+              <span className="flex items-center justify-between gap-2 border-t border-line px-3 pt-3 sm:hidden">
+                <InstallApp />
+                <button onClick={() => logout()} className="btn-link ml-auto">
+                  Log out
+                </button>
+              </span>
+            )}
           </nav>
           {user && (
             <div className="ml-auto flex items-center gap-2 text-sm">
+              <span className="hidden sm:flex">
+                <InstallApp />
+              </span>
               <ThemeToggle />
               <Link
                 to="/account"
@@ -67,20 +88,29 @@ export default function Layout() {
               >
                 <span
                   aria-hidden="true"
-                  className="grid h-8 w-8 place-items-center rounded-full bg-night text-xs font-bold text-white"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-night text-xs font-bold text-white"
                 >
                   {user.name?.[0]?.toUpperCase()}
                 </span>
                 <span className="sr-only">{user.name}</span>
               </Link>
-              <button onClick={() => logout()} className="btn-link">
+              <button onClick={() => logout()} className="btn-link hidden sm:inline">
                 Log out
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-expanded={menuOpen}
+                aria-controls="main-nav"
+                className="grid h-9 min-w-9 place-items-center rounded-full px-3 font-medium ring-1 ring-line hover:bg-surface sm:hidden"
+              >
+                {menuOpen ? 'Close' : 'Menu'}
               </button>
             </div>
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-10">
+      <main className="mx-auto max-w-5xl px-4 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:pt-10 sm:pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
     </div>

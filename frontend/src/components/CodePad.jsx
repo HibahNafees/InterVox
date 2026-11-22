@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { RUNNABLE, runCode, stopRun } from '../lib/runner'
 import { useTheme } from '../lib/theme'
+import { useSmallScreen } from '../lib/useSmallScreen'
 
 // Monaco loads on first use, so other pages stay small.
 const Editor = lazy(() => import('../lib/monaco'))
@@ -104,7 +105,10 @@ function RunPanel({ code, onChange }) {
 // The coding round's editor; its contents are sent with each answer.
 export default function CodePad({ code, onChange }) {
   const theme = useTheme()
-  const [plain, setPlain] = useState(false)
+  // Phones get the plain box only: the full editor needs a bigger screen (T-150).
+  const small = useSmallScreen()
+  const [chosePlain, setPlain] = useState(false)
+  const plain = small || chosePlain
   const set = (content) => onChange({ ...code, content: content ?? '' })
   return (
     <section className="card space-y-3 p-4" aria-label="Code editor">
@@ -127,9 +131,11 @@ export default function CodePad({ code, onChange }) {
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => setPlain((p) => !p)} className="btn-link">
-            {plain ? 'Use the code editor' : 'Use a plain text box'}
-          </button>
+          {!small && (
+            <button type="button" onClick={() => setPlain((p) => !p)} className="btn-link">
+              {plain ? 'Use the code editor' : 'Use a plain text box'}
+            </button>
+          )}
         </div>
       </div>
       {plain ? (
