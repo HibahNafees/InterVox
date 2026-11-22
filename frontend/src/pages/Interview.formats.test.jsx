@@ -118,7 +118,7 @@ describe('formats', () => {
     await userEvent.type(screen.getByPlaceholderText('e.g. $80,000 base'), '$80,000')
     await userEvent.type(screen.getByPlaceholderText('e.g. $92,000'), '$92,000')
     await userEvent.click(startCall)
-    expect(await screen.findByText(/you're aiming for/)).toHaveTextContent('Negotiation:')
+    expect(await screen.findByText(/\(you're aiming for/)).toHaveTextContent('Negotiation:')
     expect(screen.getByText('$92,000')).toBeInTheDocument()
     expect(created).toMatchObject({ format: 'negotiation', negotiation, duration_min: 10, pressure_level: 0 })
   })
