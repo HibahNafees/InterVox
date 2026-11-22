@@ -2,6 +2,9 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Recorder from './Recorder'
+import { isNativeApp } from '../lib/native'
+
+vi.mock('../lib/native', () => ({ isNativeApp: vi.fn(() => false) }))
 
 class FakeMediaRecorder {
   static isTypeSupported = (t) => t === 'audio/webm;codecs=opus'
@@ -182,6 +185,17 @@ describe('Recorder', () => {
     render(<Recorder onRecorded={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Record answer' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Microphone access was blocked')
+  })
+
+  it('points to Android settings when the app is blocked from the microphone', async () => {
+    isNativeApp.mockReturnValue(true)
+    navigator.mediaDevices.getUserMedia = vi.fn(async () => {
+      throw Object.assign(new Error('denied'), { name: 'NotAllowedError' })
+    })
+    render(<Recorder onRecorded={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Record answer' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Settings → Apps → InterVox → Permissions')
+    isNativeApp.mockReturnValue(false)
   })
 
   it('starts by itself when asked, once it is free', async () => {

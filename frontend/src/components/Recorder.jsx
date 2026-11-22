@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MAX_ANSWER_MS } from '../lib/recording'
 import { SilenceDetector, rms } from '../lib/silence'
+import { isNativeApp } from '../lib/native'
 
 const MIME_TYPES = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/mp4']
 const COUNTDOWN_FROM_MS = 2500 // show "stopping in…" for the last part of the silence
@@ -134,7 +135,9 @@ export default function Recorder({ onRecorded, onStart, onTimeUp, disabled, auto
       setState('idle')
       setError(
         err?.name === 'NotAllowedError'
-          ? 'Microphone access was blocked. Allow it in your browser, or type your answer.'
+          ? isNativeApp()
+            ? 'Microphone access was blocked. Allow it in Settings → Apps → InterVox → Permissions, or type your answer.'
+            : 'Microphone access was blocked. Allow it in your browser, or type your answer.'
           : 'No microphone found. You can type your answer instead.',
       )
       return
