@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { HeroScene, IconTile, Mascot } from '../components/Art'
+import Assignments from '../components/Assignments'
 import { useDialogs } from '../components/ConfirmDialog'
 import ScoreChart from '../components/ScoreChart'
 import { api } from '../lib/api'
@@ -289,6 +290,8 @@ export default function Dashboard() {
           <HeroScene className="hidden h-60 md:block" />
         </div>
       </div>
+
+      <Assignments />
 
       {s && s.interviews > 0 ? (
         <>

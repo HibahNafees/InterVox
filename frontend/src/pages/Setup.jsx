@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import CompanyResearch from '../components/CompanyResearch'
 import DocumentInput from '../components/DocumentInput'
 import GapAnalysis from '../components/GapAnalysis'
@@ -121,6 +121,27 @@ export default function Setup() {
   const [whyUs, setWhyUs] = useState(true)
   const job = useJobAnalysis(jdId)
   const [fits, setFits] = useState([])
+  // An interview assigned by a coach (T-166): its job description and length.
+  const [params] = useSearchParams()
+  const assignmentId = params.get('assignment')
+  const [assignment, setAssignment] = useState(null)
+  const [jdKey, setJdKey] = useState(0)
+  const loadedAssignment = useRef(null)
+
+  useEffect(() => {
+    if (!assignmentId || loadedAssignment.current === assignmentId) return
+    loadedAssignment.current = assignmentId
+    api(`/orgs/mine/assignments/${assignmentId}`)
+      .then(async ({ assignment: a }) => {
+        // Saved as the newest job description, so the picker selects it.
+        await api('/documents', { method: 'POST', body: { kind: 'job_description', text: a.jd_text } })
+        setAssignment(a)
+        setDuration(a.duration_min)
+        setCustom(!DURATIONS.includes(a.duration_min))
+        setJdKey((k) => k + 1)
+      })
+      .catch(() => {})
+  }, [assignmentId])
 
   useEffect(() => {
     if (!jdId) {
@@ -207,6 +228,12 @@ export default function Setup() {
         },
       })
       setAnswerModePref(answerMode)
+      if (assignment) {
+        await api(`/orgs/mine/assignments/${assignment.id}/link`, {
+          method: 'POST',
+          body: { session_id: session.id },
+        }).catch(() => {})
+      }
       if (!startNowFor) {
         navigate(`/interview/${session.id}`)
         return
@@ -243,9 +270,17 @@ export default function Setup() {
         </p>
       </header>
 
+      {assignment && (
+        <p role="status" className="card p-4 text-sm text-slate-700">
+          Assigned by {assignment.coach_name ?? 'your coach'}: <strong>{assignment.role_title}</strong>,{' '}
+          {assignment.duration_min} minutes{assignment.due_date ? `, due ${assignment.due_date}` : ''}. The job
+          description is filled in for you.
+        </p>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <DocumentInput kind="resume" value={resumeId} onChange={setResumeId} />
-        <DocumentInput kind="job_description" value={jdId} onChange={setJdId} />
+        <DocumentInput key={jdKey} kind="job_description" value={jdId} onChange={setJdId} />
       </div>
 
       {job.status === 'loading' && (

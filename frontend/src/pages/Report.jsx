@@ -1,11 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import CommentList from '../components/CommentList'
 import { useDialogs } from '../components/ConfirmDialog'
 import PublicShell from '../components/PublicShell'
 import Recorder from '../components/Recorder'
 import WorkView from '../components/WorkView'
 import { NoRecordingsNotice } from './Debrief'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { hasOrgs } from '../lib/orgs'
 import { canRecord, MAX_ANSWER_MS } from '../lib/recording'
 import { describeScene } from '../lib/whiteboard'
 
@@ -1060,6 +1063,7 @@ export function SharedReport() {
 
 export default function Report() {
   const { id } = useParams()
+  const { user } = useAuth()
   const [report, setReport] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -1125,10 +1129,34 @@ export default function Report() {
     )
   }
 
-  return <ReportView report={report} id={id} onAttempt={onAttempt} build={build} busy={busy} error={error} />
+  return (
+    <>
+      {hasOrgs(user) && <CoachComments sessionId={id} />}
+      <ReportView report={report} id={id} onAttempt={onAttempt} build={build} busy={busy} error={error} />
+    </>
+  )
 }
 
-function ReportView({ report, id, onAttempt, build, busy, error, shared = false }) {
+// Comments from the candidate's coach (T-166); nothing when there are none.
+function CoachComments({ sessionId }) {
+  const [comments, setComments] = useState([])
+  useEffect(() => {
+    api(`/orgs/mine/sessions/${sessionId}/comments`)
+      .then((data) => setComments(data.comments))
+      .catch(() => setComments([]))
+  }, [sessionId])
+  if (!comments.length) return null
+  return (
+    <section className="card mb-6 space-y-3 p-6 print:hidden" aria-labelledby="coach-notes">
+      <h2 id="coach-notes" className="text-lg font-bold">
+        From your coach
+      </h2>
+      <CommentList comments={comments} />
+    </section>
+  )
+}
+
+export function ReportView({ report, id, onAttempt, build, busy, error, shared = false, title = '' }) {
   const { scored, total, set_aside: setAside = 0 } = report.progress
   const generating = report.status === 'generating'
   return (
@@ -1147,9 +1175,8 @@ function ReportView({ report, id, onAttempt, build, busy, error, shared = false 
           <h1 className="mt-1 text-3xl font-extrabold text-slate-900">
             {report.debrief
               ? `${report.debrief.role}${report.debrief.company ? ` at ${report.debrief.company}` : ''}`
-              : shared
-                ? 'Shared interview report'
-                : 'Your report'}
+              : title ||
+                (shared ? 'Shared interview report' : 'Your report')}
           </h1>
           <p className="mt-1 text-slate-600">
             {report.role_title} · {report.duration_min} minutes · {report.difficulty}

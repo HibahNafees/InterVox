@@ -1,6 +1,41 @@
 import { useState } from 'react'
+import { useDialogs } from '../components/ConfirmDialog'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { candidateOrgs } from '../lib/orgs'
+
+// Which coaching orgs may see this candidate's reports (T-166).
+function OrgSharing({ orgs }) {
+  const { notify } = useDialogs()
+  const [shared, setShared] = useState(() => Object.fromEntries(orgs.map((o) => [o.id, !!o.consent])))
+
+  async function toggle(org, share) {
+    try {
+      await api(`/orgs/${org.id}/consent`, { method: 'PUT', body: { share } })
+      setShared((s) => ({ ...s, [org.id]: share }))
+      notify(share ? `Sharing your reports with ${org.name}` : `Stopped sharing with ${org.name}`)
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+
+  return (
+    <div className="card space-y-3 p-6 text-sm text-slate-700">
+      <h2 className="text-lg font-bold text-slate-900">Your coaches</h2>
+      {orgs.map((o) => (
+        <label key={o.id} className="flex items-start gap-3">
+          <input type="checkbox" className="mt-1" checked={shared[o.id]} onChange={(e) => toggle(o, e.target.checked)} />
+          <span>
+            <span className="font-semibold">Share my interview reports with {o.name}</span>
+            <span className="block text-slate-500">
+              Their coaches see your scores, answers and progress only while this is on.
+            </span>
+          </span>
+        </label>
+      ))}
+    </div>
+  )
+}
 
 export default function Account() {
   const { user, logout } = useAuth()
@@ -42,6 +77,11 @@ export default function Account() {
         </ul>
       </div>
 
+      {candidateOrgs(user).length > 0 && <OrgSharing orgs={candidateOrgs(user)} />}
+
+      {user?.is_demo ? (
+        <p className="card p-6 text-sm text-slate-600">Demo accounts can’t be changed or deleted.</p>
+      ) : (
       <form onSubmit={remove} className="card space-y-4 border border-red-200 p-6">
         <div>
           <h2 className="text-lg font-bold text-red-800">Delete my data</h2>
@@ -77,6 +117,7 @@ export default function Account() {
           {busy ? 'Deleting…' : 'Delete everything'}
         </button>
       </form>
+      )}
     </section>
   )
 }

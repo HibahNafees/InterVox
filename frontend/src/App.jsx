@@ -5,12 +5,18 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Account from './pages/Account'
 import Admin from './pages/Admin'
 import CheatSheet from './pages/CheatSheet'
+import Coach from './pages/Coach'
+import CoachCandidate from './pages/CoachCandidate'
+import CoachReport from './pages/CoachReport'
 import Dashboard from './pages/Dashboard'
 import Debrief from './pages/Debrief'
 import Decoder from './pages/Decoder'
+import Demo from './pages/Demo'
 import Interview from './pages/Interview'
+import Join from './pages/Join'
 import Lab from './pages/Lab'
 import Login from './pages/Login'
+import OrgSettings from './pages/OrgSettings'
 import Report, { SharedReport } from './pages/Report'
 import Reverse, { ReverseSetup } from './pages/Reverse'
 import Setup from './pages/Setup'
@@ -48,6 +54,13 @@ export default function App() {
           <Route path="lab" element={<Lab />} />
           <Route path="reverse" element={<ReverseSetup />} />
           <Route path="reverse/:id" element={<Reverse />} />
+          {/* Organizations and the sales demo (T-166): the API 404s anyone not allowed. */}
+          <Route path="demo" element={<Demo />} />
+          <Route path="coach" element={<Coach />} />
+          <Route path="coach/:orgId/candidates/:candidateId" element={<CoachCandidate />} />
+          <Route path="coach/:orgId/candidates/:candidateId/report/:sessionId" element={<CoachReport />} />
+          <Route path="org/:orgId/settings" element={<OrgSettings />} />
+          <Route path="join/:token" element={<Join />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
