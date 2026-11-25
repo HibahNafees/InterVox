@@ -1,0 +1,129 @@
+# Builds the signed InterVox release APK (T-157).
+# Runs on demand (Actions → Android APK → Run workflow) and on pushes to main that
+# change the frontend. The keystore and its passwords come from four repository
+# secrets and exist only inside the runner's temp folder for the length of the job.
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/android.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Release certificate fingerprint (the same one registered in the Android OAuth
+  # client for Google sign-in). The build fails if the APK is signed with anything else.
+  EXPECTED_SHA1: "84:EA:2A:6A:29:65:BB:CB:EB:F9:05:6F:D4:E7:DF:A8:EE:E4:00:2B"
+  BUILD_TOOLS: "36.0.0"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Android SDK Platform 36 and build tools
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;${BUILD_TOOLS}" > /dev/null
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app and sync Android
+        run: npm run build:android
+
+      - name: Write signing config (runner only)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set."
+              exit 1
+            fi
+          done
+          umask 077
+          dir="$RUNNER_TEMP/intervox-signing"
+          mkdir -p "$dir"
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$dir/release.jks"
+          # java.util.Properties treats backslashes as escapes, so double them.
+          esc() { printf '%s' "${1//\\/\\\\}"; }
+          {
+            echo "storeFile=$dir/release.jks"
+            echo "storePassword=$(esc "$KEYSTORE_PASSWORD")"
+            echo "keyAlias=$(esc "$KEY_ALIAS")"
+            echo "keyPassword=$(esc "$KEY_PASSWORD")"
+          } > "$dir/keystore.properties"
+          echo "INTERVOX_KEYSTORE_PROPERTIES=$dir/keystore.properties" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        working-directory: frontend/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Remove signing files
+        if: always()
+        working-directory: .
+        run: rm -rf "$RUNNER_TEMP/intervox-signing"
+
+      - name: Verify signing certificate SHA-1
+        run: |
+          set -euo pipefail
+          cd android/app/build/outputs/apk/release
+          if [ ! -f app-release.apk ]; then
+            echo "::error::app-release.apk was not produced (unsigned build?)."
+            ls -la
+            exit 1
+          fi
+          apksigner="$ANDROID_HOME/build-tools/${BUILD_TOOLS}/apksigner"
+          certs="$("$apksigner" verify --print-certs app-release.apk)"
+          signers="$(printf '%s\n' "$certs" | grep -c 'certificate SHA-1 digest:' || true)"
+          if [ "$signers" != "1" ]; then
+            echo "::error::Expected exactly one signer, found $signers."
+            exit 1
+          fi
+          actual="$(printf '%s\n' "$certs" | sed -n 's/.*certificate SHA-1 digest: *//p' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          expected="$(printf '%s' "$EXPECTED_SHA1" | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Signing certificate SHA-1 is $actual, expected $expected."
+            exit 1
+          fi
+          echo "Signing certificate SHA-1 matches $EXPECTED_SHA1"
+          mv app-release.apk "intervox-${GITHUB_SHA::7}.apk"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: intervox-apk-${{ github.sha }}
+          path: frontend/android/app/build/outputs/apk/release/intervox-*.apk
+          if-no-files-found: error
+          retention-days: 30

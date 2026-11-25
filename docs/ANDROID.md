@@ -2,8 +2,9 @@
 
 The Android app wraps the same Vite frontend with Capacitor 8 (`frontend/android`,
 `frontend/capacitor.config.json`). It ships the built web files inside the APK and
-calls the live API at `https://intervox.duckdns.org`. It is built on a Mac (the devbox
-has no Android SDK). Ticket: T-147.
+calls the live API at `https://intervox.duckdns.org`. The signed release APK is built by
+GitHub Actions (`.github/workflows/android.yml`, T-157); building on a Mac still works as a
+fallback. The devbox has no Android SDK. Ticket: T-147.
 
 - **App id:** `site.intervox.app` · **name:** InterVox
 - **WebView origin:** `https://app.intervox.site`. The live API must list it in
@@ -16,13 +17,70 @@ has no Android SDK). Ticket: T-147.
 - **Google sign-in:** native account picker via `@capgo/capacitor-social-login`
   (T-156). Needs an *Android* OAuth client in Google Cloud with package
   `site.intervox.app` and the release keystore's SHA-1; see `docs/GOOGLE_SIGN_IN.md`.
+- **Release certificate SHA-1:** `84:EA:2A:6A:29:65:BB:CB:EB:F9:05:6F:D4:E7:DF:A8:EE:E4:00:2B`
+  (registered in the Android OAuth client). The CI build fails if the APK's signer differs.
 - **Signing:** `android/app/build.gradle` reads `~/.intervox/keystore.properties`
   (override with `INTERVOX_KEYSTORE_PROPERTIES`). The keystore and its passwords never
   go in the repo; `*.jks`, `*.keystore` and `keystore.properties` are gitignored.
   **Back up the keystore and passwords.** Losing them means future updates can't install
   over the app; you would have to uninstall and reinstall.
 
-## Mac prerequisites (one time)
+## Build in GitHub Actions (recommended)
+
+The **Android APK** workflow builds and signs the release APK on Ubuntu with Node 22,
+JDK 21 and Android SDK Platform 36 (`npm ci` → `npm run build:android` →
+`./gradlew assembleRelease`). It runs:
+
+- on demand: GitHub → **Actions** → **Android APK** → **Run workflow** (or
+  `gh workflow run android.yml`), and
+- on every push to `main` that changes `frontend/**` (or the workflow itself).
+
+### Repository secrets (one time)
+
+Add four secrets under **Settings → Secrets and variables → Actions**, from the Mac that
+holds the keystore (values come from `~/.intervox/keystore.properties`):
+
+| Secret | Value |
+|---|---|
+| `KEYSTORE_BASE64` | the `.jks` file, base64-encoded |
+| `KEYSTORE_PASSWORD` | `storePassword` |
+| `KEY_ALIAS` | `keyAlias` (`intervox`) |
+| `KEY_PASSWORD` | `keyPassword` |
+
+```bash
+# On the Mac, with gh logged in; each command reads the value from stdin or a prompt,
+# so nothing lands in shell history.
+base64 -i ~/.intervox/intervox-release.jks | gh secret set KEYSTORE_BASE64 -R HibahNafees/InterVox
+gh secret set KEYSTORE_PASSWORD -R HibahNafees/InterVox    # paste storePassword
+gh secret set KEY_ALIAS -R HibahNafees/InterVox            # type: intervox
+gh secret set KEY_PASSWORD -R HibahNafees/InterVox         # paste keyPassword
+```
+
+### What the workflow does with them
+
+- Decodes the keystore and writes `keystore.properties` into the runner's temp folder
+  (`$RUNNER_TEMP`, mode 600), points Gradle at it with `INTERVOX_KEYSTORE_PROPERTIES`, and
+  deletes both after the build. Nothing is committed or uploaded except the APK.
+- Secrets are only passed as environment variables to that one step and are never
+  echoed; GitHub also masks them in logs. A missing secret fails the run by name.
+- After the build, `apksigner verify --print-certs` must show exactly one signer whose
+  SHA-1 is the release fingerprint above; otherwise the run fails and no APK is uploaded.
+
+### Download and install
+
+Open the run → **Artifacts** → `intervox-apk-<commit>` (kept 30 days). It downloads as a
+zip holding `intervox-<short commit>.apk`. Unzip it, then either `adb install -r
+intervox-*.apk`, or copy the APK to the phone and open it (allow "Install unknown apps"
+for the browser/files app once). From the command line:
+`gh run download -R HibahNafees/InterVox -n intervox-apk-<full commit sha>`.
+
+Because the CI build uses the same keystore, it installs over a Mac-built app and keeps
+its data. Bump `versionCode`/`versionName` in `android/app/build.gradle` for each release
+you hand out, as below.
+
+## Build on a Mac (fallback)
+
+### Mac prerequisites (one time)
 
 - Node 22+ (`node -v`)
 - Android Studio, with Android SDK Platform 36 and Build-Tools installed (SDK Manager)
@@ -34,7 +92,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 export PATH="$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH"
 ```
 
-## Create the keystore (one time)
+### Create the keystore (one time)
 
 ```bash
 mkdir -p ~/.intervox && chmod 700 ~/.intervox
@@ -51,7 +109,7 @@ EOF
 chmod 600 ~/.intervox/keystore.properties ~/.intervox/intervox-release.jks
 ```
 
-## Build and install
+### Build and install
 
 ```bash
 git clone git@github.com:HibahNafees/InterVox.git ~/InterVox   # first time; later: git -C ~/InterVox pull
