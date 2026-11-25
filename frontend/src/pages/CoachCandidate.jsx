@@ -98,7 +98,7 @@ export default function CoachCandidate() {
                   <span>
                     {a.role_title} · {a.duration_min} min{a.due_date ? ` · due ${fmtDate(a.due_date)}` : ''}
                   </span>
-                  <span className={`chip ${a.status === 'overdue' ? 'bg-red-100 text-red-800' : a.status === 'done' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>
+                  <span className={`chip shrink-0 whitespace-nowrap ${a.status === 'overdue' ? 'bg-red-100 text-red-800' : a.status === 'done' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>
                     {STATUS_LABELS[a.status]}
                   </span>
                 </li>

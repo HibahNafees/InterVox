@@ -41,6 +41,7 @@ ACCOUNTS = {
     "struggling": next(c["email"] for c in data.CANDIDATES if c["key"] == "struggling"),
 }
 READY = ("candidate", "struggling")
+ANSWER_BUDGET_SEC = 120
 
 
 def email(local: str) -> str:
@@ -182,7 +183,8 @@ def _seed_session(user, c, spec, rubric, resume, jd, now) -> Session:
         microsecond=0,
     )
     qs = spec["questions"]
-    budget = spec["minutes"] * 60 // len(qs)
+    # A realistic answer budget (2 minutes), not the session split by question.
+    budget = ANSWER_BUDGET_SEC
     sections: dict[str, dict] = {}
     for item in qs:
         sec = sections.setdefault(
