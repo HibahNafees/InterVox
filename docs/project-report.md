@@ -2,9 +2,9 @@
 
 *How we built InterVox, an AI practice interviewer, from the first spec to the live site.*
 
-Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `43c7ea7`, which added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions (**T-157**).
+Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `43c7ea7`, which added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions, and every build installs as an update (**T-157, T-159**).
 
-**Sources.** This report uses only the project's own records: the git history (157 commits up to `105fec4`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (137 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
+**Sources.** This report uses only the project's own records: the git history (160 commits up to `bafdffe`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (139 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
 
 ---
 
@@ -60,7 +60,7 @@ Each user can make **10 Chat Lab calls a day** (a chat uses 1, a compare 2, a de
 | Speech-to-text | Fire `POST /v1/transcribe` (Whisper Large v3 Turbo) | Under 1 cent per minute (`SPEC.md`). It keeps "um" and "uh", so filler counts work (verified live 2026-10-09, `CLAUDE.md`). |
 | AI brain | Fire `POST /v1/chat`, model **`gpt-4o-mini`** (`FIRE_CHAT_MODEL`) | Handles every interviewer turn, plan, rubric, score and rewrite. Chosen because Fire's default model, Claude Sonnet, "is far pricier" (`CLAUDE.md`). |
 | Sign-in | Email and password, or **Google Identity Services** (web button) and `@capgo/capacitor-social-login` (Android account picker); `google-auth` checks the ID token in Flask | Free, and needs no Google secret: the client id is public and Flask checks each token's signature, audience, issuer and verified email (**T-156**, `docs/GOOGLE_SIGN_IN.md`). |
-| Phones | **Capacitor 8** Android app (`frontend/android`) and an installable **PWA** (web manifest, app-shell service worker) | Free. Both reuse the same React site, so there is no second app to maintain (**T-147, T-149**, `docs/ANDROID.md`). The signed APK is built by **GitHub Actions** (free for public repos and within the free minutes otherwise), so no Mac or Android Studio is needed (**T-157**). |
+| Phones | **Capacitor 8** Android app (`frontend/android`) and an installable **PWA** (web manifest, app-shell service worker) | Free. Both reuse the same React site, so there is no second app to maintain (**T-147, T-149**, `docs/ANDROID.md`). The signed APK is built by **GitHub Actions** (free for public repos and within the free minutes otherwise), so no Mac or Android Studio is needed (**T-157**). Each build's version comes from its run number, so a new APK always installs as an update (**T-159**). |
 | Database | **MySQL 8** (dev), **MySQL 8.4** container (live) | Free (`SPEC.md`). Tests use in-memory SQLite with foreign keys enforced like MySQL (`commit 7191a44`). |
 | Hosting (planned) | Oracle Cloud Always Free VM (2 cores / 12 GB ARM), Docker Compose, Caddy | Free tier (`SPEC.md`). Oracle refused the sign-up, so this was never used (see §7). |
 | Hosting (actual) | The **devbox** server: Docker Compose (db, api, purge) behind **nginx + certbot**; frontend on **Vercel Hobby** | Free. nginx already owned ports 80/443 on the devbox (`docs/DEPLOY.md` §2b, `commit 27501f6`). |
@@ -155,6 +155,7 @@ Most of the work happened in 7 days in October: Oct 6 (2 commits), Oct 8 (1), Oc
 | 11-22 | Guards and sign-in | Daily cap on Fire-voiced replies; root-only DB backups; **Sign in with Google** on the website and in the app | `18de8e6`, `af3056d`, `43c7ea7` | T-153–T-156 |
 | 11-23/24 | Deploy and phone test | Master deployed `43c7ea7`; Google sign-in, an interview in the app and the PWA install checked on an Android phone | — | T-149–T-151 closed |
 | 11-25 | **APK in GitHub Actions** | The signed release APK is built in CI on demand and on frontend pushes, with a check of the signing certificate; first run passed and the app installed and worked | `1e7d753`, `105fec4` | T-157 |
+| 11-25 | **APK versions** | `versionCode` = 100 + the Actions run number and `versionName` `1.1.<run>`, checked in the built APK; each APK sent to the phone installs as an update and keeps the user's data | `d550abe`, `bafdffe` | T-158, T-159 |
 
 Every server deploy after go-live went through a ticket with a deploy plan, a human `pm approve`, and the master agent pulling and rebuilding (§7).
 
@@ -222,7 +223,7 @@ Every server deploy after go-live went through a ticket with a deploy plan, a hu
 - **Android app** (**T-147**): the same site wrapped with Capacitor 8, with an InterVox launcher icon and splash, and a mic-permission message that points to Android settings (**T-151**).
 - **Installable web app** (**T-149**): a web manifest, an app-shell service worker and an install button, so InterVox can be added to a phone's home screen from the website.
 - **Phone layouts** (**T-150**): a folding Menu nav, a compact logo, safe-area padding and a plain code box. Phones don't get coding or whiteboard rounds.
-- **APK built in the cloud** (**T-157**): a GitHub Actions workflow builds the signed release APK whenever the frontend changes, or on demand, and offers it as a download on the run page (§7).
+- **APK built in the cloud** (**T-157**): a GitHub Actions workflow builds the signed release APK whenever the frontend changes, or on demand, and offers it as a download on the run page (§7). Each build gets a higher version number from its run number, so sending the new APK to a phone and opening it updates the app in place, keeping sign-in and data (**T-159**).
 
 ---
 
@@ -349,7 +350,8 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
   - Node 22, JDK 21 and Android SDK Platform 36, then `npm ci`, `npm run build:android` and `./gradlew assembleRelease`;
   - the keystore and its passwords come from four repository secrets (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`), are written only into the runner's temp folder and are deleted after the build; they are never printed;
   - the build fails unless the APK has exactly one signer whose SHA-1 is the release certificate's (`84:EA:2A:…:00:2B`), so a wrong keystore can't produce an APK that won't update the installed app or breaks Google sign-in;
-  - the APK is uploaded as a run artifact, kept 30 days;
+  - the version comes from the run number (**T-158, T-159**): `versionCode` = 100 + run number and `versionName` = `1.1.<run>`, passed to Gradle as `INTERVOX_VERSION_CODE`/`INTERVOX_VERSION_NAME` (local builds default to 2 / 1.1). The +100 keeps CI builds above the hand-set 2, and the run reads the version back from the APK with `aapt2` and fails if it differs. Android refuses to install a lower `versionCode` over a higher one, so this keeps every CI APK installable as an update;
+  - the APK is uploaded as a run artifact (`intervox-apk-1.1.<run>`), kept 30 days;
   - building on a Mac with the same keystore (kept outside the repo) still works as a fallback (`docs/ANDROID.md`);
   - Google sign-in in the app needs an Android OAuth client tied to that keystore's SHA-1 (`docs/GOOGLE_SIGN_IN.md`).
 - **Security headers:** HSTS, `nosniff`, `X-Frame-Options: DENY`, Referrer-Policy and Permissions-Policy, on both nginx/Caddy and Vercel. The API host answers only `/api/*`; everything else gets 404.
@@ -390,8 +392,8 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 - **Not yet seen in a live session:** T-117, T-126, T-127, T-129, T-130 and the panel handover wording (**T-135**). Their tests pass with Fire mocked, but the rewrite fixes only show up when the model words things a certain way. Also not yet clicked through on the live site: deleting one of your own interviews (**T-136**) and the new confirm dialog and collapsible list (**T-137**, checked in the built site with the API mocked, and in the live bundle).
 - **Phase 11 (optional):** real-time voice with LiveKit (interruptions, peer practice). **Phase 12 (optional):** a Hume EVI emotion experiment (`CLAUDE.md`). Neither has started.
 - **Oracle:** `DEPLOY.md` notes the stack can move to Oracle later with a backup and the same `.env`, "if Oracle ever works out".
-- **Checked 2026-11-25:** the first GitHub Actions APK run passed the signing check, and the APK it produced installed and worked on the phone (**T-157**).
-- **Open tickets:** none as of 2026-11-25. All 137 InterVox tickets are closed (102 problems, 31 ideas, 4 run tickets).
+- **Checked 2026-11-25:** the first GitHub Actions APK run passed the signing check, and the APK it produced installed and worked on the phone (**T-157**). A later run-numbered APK installed on the phone as an update over the existing app (**T-159**).
+- **Open tickets:** none as of 2026-11-25. All 139 InterVox tickets are closed (102 problems, 33 ideas, 4 run tickets).
 - *Unclear:*
   - The sources don't record total Fire spend for October; the live database couldn't be read from this session. The rules check and run tickets log individual check costs (for example ~$0.034, ~$0.05, $0.0744, $0.0768).
   - Ticket numbers are shared across the devbox. The gaps in InterVox's list (T-1–T-11, T-28, T-50, T-59, T-67, T-110, T-131, T-144, T-152) aren't InterVox tickets in the database, and the sources don't say what happened to them.
