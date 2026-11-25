@@ -66,6 +66,7 @@ def test_reset_seeds_the_org_and_makes_no_fire_calls(app, fire):
             db.select(Report).join(Session).where(Session.user_id == user.id)
         ).all()
         assert len(reports) == n and all(r.status == "ready" for r in reports)
+        assert all(r.top_takeaways_json and r.exercises_json for r in reports)
     # All candidates shared their reports.
     assert all(
         m.consent_at

@@ -45,6 +45,12 @@ BAND_COMMENTS = {
         1: "Did not answer the question.",
     },
 }
+# Recommended exercises on every seeded report (the Final Report rule).
+EXERCISES = [
+    "Write two STAR stories for this role that each end with a number.",
+    "Answer your weakest question again out loud in under two minutes.",
+]
+
 ROLE_COMMENTS = {
     5: "Strong, specific evidence for this skill.",
     4: "Good evidence; one more concrete detail would make it stand out.",

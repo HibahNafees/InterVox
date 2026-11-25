@@ -302,7 +302,7 @@ def _seed_session(user, c, spec, rubric, resume, jd, now) -> Session:
             status="ready",
             started_at=session.ended_at,
             top_takeaways_json=spec["takeaways"],
-            exercises_json=[],
+            exercises_json=spec.get("exercises", data.EXERCISES),
             analytics_json=session_summary(per_question),
             stories_at=session.ended_at,  # never re-run the story-bank update
             created_at=session.ended_at,
