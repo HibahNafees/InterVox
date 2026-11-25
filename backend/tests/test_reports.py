@@ -12,6 +12,8 @@ from app.services.scoring import (
     CriterionScore,
     _detach,
     _keep,
+    drop_soft_hedges,
+    drop_told_result_placeholder,
     fill_result,
     Sentence,
     grounding_problems,
@@ -1674,3 +1676,45 @@ def test_gap_check_drops_gaps_that_dont_fit_the_question(client, auth, planned, 
         c["prompt"] for c in fire.calls if "Check which points" in c["prompt"]
     )
     assert '"fits"' in gap_prompt
+
+
+def test_rewrite_drops_soft_hedges():
+    # T-163 (eval): weak answers' "I guess" / "kind of" survived into the rewrite.
+    assert drop_soft_hedges(
+        "I guess there was a time when I needed to convince a stakeholder. We just "
+        "gathered some information, outlined the benefits, and kind of highlighted "
+        "the impact. [add the result you achieved]"
+    ) == (
+        "There was a time when I needed to convince a stakeholder. We just gathered "
+        "some information, outlined the benefits, and highlighted the impact. "
+        "[add the result you achieved]"
+    )
+    assert drop_soft_hedges(
+        "I guess I would add retries, and we sort of tested it."
+    ) == ("I would add retries, and we tested it.")
+    # Noun uses stay.
+    kept = "I picked the kind of queue that fits, a sort of buffer for bursts."
+    assert drop_soft_hedges(kept) == kept
+
+
+def test_result_placeholder_goes_when_a_sentence_gives_the_result():
+    # T-164 (eval): the result came from the résumé, so no quote filled it.
+    text = (
+        "I gathered data showing stock-outs cost about $2 million a year. I also "
+        "highlighted the benefits of [add the result you achieved]. As a result of my "
+        "efforts, we implemented a reorder-point fix that halved the stock-outs."
+    )
+    assert drop_told_result_placeholder(text) == (
+        "I gathered data showing stock-outs cost about $2 million a year. As a result "
+        "of my efforts, we implemented a reorder-point fix that halved the stock-outs."
+    )
+    # A placeholder sentence that still stands keeps its words.
+    assert drop_told_result_placeholder(
+        "I rolled out the checklist to every nurse [add the result you achieved]. "
+        "In the end, falls dropped on the unit."
+    ) == (
+        "I rolled out the checklist to every nurse. In the end, falls dropped on the unit."
+    )
+    # No sentence gives the result: the placeholder stays.
+    left = "I trained the apprentices. [add the result you achieved]"
+    assert drop_told_result_placeholder(left) == left

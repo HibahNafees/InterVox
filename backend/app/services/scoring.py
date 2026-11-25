@@ -521,6 +521,58 @@ def fill_result(stronger: str, result_quote: str | None) -> str:
     return " ".join(out)
 
 
+# Softeners a weak answer leans on, which the rewrite must not keep (T-163): "I guess",
+# "I suppose", and "kind of"/"sort of" only after a subject or "just"/"and", so noun
+# uses ("what kind of tool") stay.
+SOFT_HEDGE_RE = re.compile(r"\bI (?:guess|suppose)\b,?\s*(?:that\s+)?", re.IGNORECASE)
+MINIMIZER_RE = re.compile(
+    r"\b(I|we|they|just|and)\s+(?:kind|sort)\s+of\s+", re.IGNORECASE
+)
+# A sentence that plainly gives the outcome (T-164).
+RESULT_TOLD_RE = re.compile(
+    r"^(?:as a result\b|in the end\b|ultimately\b|(?:this|that|which|it) "
+    r"(?:resulted|led) (?:in|to)\b)",
+    re.IGNORECASE,
+)
+DANGLING_RE = re.compile(r"\b(?:of|to|the|a|an|and|with|for|that|by|in|on)\W*$", re.I)
+
+
+def drop_soft_hedges(stronger: str) -> str:
+    """Take "I guess" / "we kind of" out of the rewrite (T-163)."""
+    out = []
+    for part in re.split(r"(?<=[.!?])\s+", stronger.strip()):
+        fixed = MINIMIZER_RE.sub(r"\1 ", SOFT_HEDGE_RE.sub("", part))
+        fixed = SPACE_RE.sub(" ", fixed).strip()
+        if fixed and part[:1].isupper():
+            fixed = fixed[0].upper() + fixed[1:]
+        if fixed:
+            out.append(fixed)
+    return " ".join(out)
+
+
+def drop_told_result_placeholder(stronger: str) -> str:
+    """No "[add the result]" when another sentence already gives the result, e.g. one
+    from the résumé the scorer didn't quote (T-164)."""
+    if not RESULT_PLACEHOLDER_RE.search(stronger):
+        return stronger
+    parts = re.split(r"(?<=[.!?])\s+", stronger.strip())
+    if not any(
+        RESULT_TOLD_RE.search(p) and not RESULT_PLACEHOLDER_RE.search(p) for p in parts
+    ):
+        return stronger
+    out = []
+    for part in parts:
+        if not RESULT_PLACEHOLDER_RE.search(part):
+            out.append(part)
+            continue
+        rest = SPACE_RE.sub(" ", RESULT_PLACEHOLDER_RE.sub(" ", part)).strip()
+        body = rest.rstrip(".!?,;: ")
+        # Keep what's left only if it still stands as a sentence.
+        if len(WORD_RE.findall(body.lower())) >= 4 and not DANGLING_RE.search(body):
+            out.append(body + ".")
+    return " ".join(out)
+
+
 # "those queries" / "these changes": a back-reference that needs something before it.
 BACK_REF_RE = re.compile(r"\b(?:those|these)\s+([a-z]{3,})", re.I)
 
@@ -1479,6 +1531,7 @@ def _evaluate(
     if not (off_topic and not scenario):
         stronger = fill_result(stronger, out.star.result_quote if out.star else None)
         stronger = restore_context(stronger, answers)
+        stronger = drop_told_result_placeholder(drop_soft_hedges(stronger))
     said = _norm(" ".join(e["candidate"] for e in exchange))
     weak = [
         w.model_dump()
