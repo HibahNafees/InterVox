@@ -110,6 +110,8 @@ class Run:
     possible_false_gaps: list = field(default_factory=list)
     unsafe_lines: list = field(default_factory=list)
     answers: list = field(default_factory=list)
+    # Answers to the scored questions only (main + follow-ups), for the persona check.
+    scored_answers: list = field(default_factory=list)
     spend_usd: float = 0.0
     seconds: float = 0.0
     error: str = ""
@@ -267,6 +269,9 @@ def run_one(app, field_key: str, persona: str, live: bool) -> Run:
         for q in report["questions"]:
             e = q["evaluation"] or {}
             run.question_scores.append(e.get("score"))
+            run.scored_answers += [
+                x["answer"] for x in q.get("exchange") or [] if x.get("answer")
+            ]
             if e.get("star"):
                 run.star_result.append(bool(e["star"].get("result")))
             run.possible_false_gaps += _possible_false_gaps(q)
@@ -281,9 +286,12 @@ def run_one(app, field_key: str, persona: str, live: bool) -> Run:
 def persona_drift(r: Run) -> str:
     """Why the candidate didn't behave like its persona ("" if it did).
 
-    Skips the first answer (small talk) and the last (questions for them)."""
+    Judges only the answers to scored questions: small talk and the wrap-up
+    ("any questions for me?") are short for every persona, and a question for the
+    interviewer may name a number ("the Grade 4 team") without being a metric (T-161).
+    """
     rule = DRIFT.get(r.persona)
-    answers = r.answers[1:-1] if len(r.answers) > 2 else r.answers
+    answers = r.scored_answers or (r.answers[1:-1] if len(r.answers) > 2 else r.answers)
     if not rule or not answers:
         return ""
     avg = sum(len(a.split()) for a in answers) / len(answers)
