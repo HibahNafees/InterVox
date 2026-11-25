@@ -139,3 +139,37 @@ jobs:
           path: frontend/android/app/build/outputs/apk/release/intervox-*.apk
           if-no-files-found: error
           retention-days: 30
+
+  # Publishes each verified APK as a GitHub Release (T-160), so anyone can download it
+  # from releases/latest without a GitHub login. Runs as its own job: it gets write
+  # access to releases but never sees the signing secrets.
+  release:
+    needs: apk
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: intervox-apk-1.1.${{ github.run_number }}
+          path: apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: 1.1.${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          cp "apk/intervox-${VERSION}.apk" InterVox.apk
+          if gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            # A re-run of the same run: replace the files, keep the release.
+            gh release upload "v${VERSION}" InterVox.apk "apk/intervox-${VERSION}.apk" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+            exit 0
+          fi
+          gh release create "v${VERSION}" InterVox.apk "apk/intervox-${VERSION}.apk" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "InterVox ${VERSION}" \
+            --notes "Signed Android APK built from ${GITHUB_SHA::7}. Download InterVox.apk on the phone, open it and tap Install (or Update). Signing certificate SHA-1: ${EXPECTED_SHA1}."
