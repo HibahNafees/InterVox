@@ -1,12 +1,17 @@
 import re
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from flask_jwt_extended import (
+    create_access_token,
+    get_jwt,
+    get_jwt_identity,
+    jwt_required,
+)
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from ..extensions import db
 from ..models import User
-from ..services import admin, google_auth, privacy, ratelimit
+from ..services import access, admin, google_auth, orgs, privacy, ratelimit
 from .common import first_error
 
 bp = Blueprint("auth", __name__)
@@ -88,6 +93,9 @@ def login():
     user = db.session.scalar(
         db.select(User).filter_by(email=body.email.strip().lower())
     )
+    if user is not None and user.is_demo:
+        # Demo accounts open only from an admin session (T-166).
+        return jsonify(error="Incorrect email or password"), 401
     if user is not None and not user.password_hash:
         return (
             jsonify(
@@ -125,7 +133,11 @@ def google():
         claims = google_auth.verify(body.credential)
     except google_auth.GoogleAuthError as err:
         return jsonify(error=err.message), 401
+    if str(claims.get("email", "")).strip().lower().endswith(access.DEMO_DOMAIN):
+        return jsonify(error="Google sign-in didn't work. Please try again."), 401
     user, created = google_auth.find_or_create(claims)
+    if user.is_demo:
+        return jsonify(error="Google sign-in didn't work. Please try again."), 401
     return _token_response(user, 201 if created else 200)
 
 
@@ -147,6 +159,8 @@ def delete_me():
     user = db.session.get(User, int(get_jwt_identity()))
     if user is None:
         return jsonify(error="Account not found"), 404
+    if user.is_demo:
+        return jsonify(error="Demo accounts can't be changed or deleted"), 403
     if not ratelimit.allow("delete", 5, 900, key=str(user.id)):
         return jsonify(error=TOO_MANY), 429
     if user.password_hash:
@@ -166,4 +180,18 @@ def me():
     user = db.session.get(User, int(get_jwt_identity()))
     if user is None:
         return jsonify(error="Account not found"), 404
-    return jsonify(user={**user.to_dict(), "is_admin": admin.is_admin(user)})
+    data = {**user.to_dict(), "is_admin": admin.is_admin(user)}
+    # Org and demo keys only for those who may see them (T-166): for everyone
+    # else /auth/me is unchanged.
+    claims = get_jwt()
+    if access.can_use_orgs(user, claims):
+        data["orgs"] = orgs.memberships(user.id)
+        data["can_use_demo"] = access.can_use_demo(user)
+    if user.is_demo:
+        data["is_demo"] = True
+        data["demo_role"] = (
+            "coach"
+            if any(m["role"] != "candidate" for m in data.get("orgs", []))
+            else "candidate"
+        )
+    return jsonify(user=data)

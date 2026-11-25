@@ -132,8 +132,18 @@ class FireClient:
         return self._post("/v1/speech", payload)
 
 
+DEMO_MESSAGE = "This is a demo account: live interviews and AI features are off."
+
+
 def get_fire() -> FireClient:
-    """The app's Fire client. Tests replace app.extensions['fire'] with a fake."""
+    """The app's Fire client. Tests replace app.extensions['fire'] with a fake.
+
+    Demo accounts (T-166) never reach Fire: the demo must cost nothing.
+    """
+    from .access import current_is_demo
+
+    if current_is_demo():
+        raise FireError(DEMO_MESSAGE, 403)
     ext = current_app.extensions
     if "fire" not in ext:
         cfg = current_app.config

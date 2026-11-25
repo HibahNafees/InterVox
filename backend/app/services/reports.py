@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
-from ..models import Answer, Debrief, Evaluation, Question, Report, Session
+from ..models import Answer, Debrief, Evaluation, Question, Report, Session, User
 from ..models.base import utcnow
 from . import (
     coach,
@@ -31,7 +31,7 @@ from . import (
 from .analytics import Clip, delivery, session_summary
 from . import body as body_language
 from .work import with_work
-from .fire import FireError
+from .fire import DEMO_MESSAGE, FireError
 from .limits import LimitReached, check_budget
 from .llm import UnusableReply, chat_json, render
 
@@ -141,6 +141,12 @@ def get_report(session: Session) -> Report | None:
 def request_report(session: Session) -> Report:
     """Create the report (or resume a failed/stale run) and generate it."""
     report = get_report(session)
+    owner = db.session.get(User, session.user_id)
+    if owner is not None and owner.is_demo:
+        # Demo reports are seeded; generating one would call Fire (T-166).
+        if report is not None and report.status == "ready":
+            return report
+        raise FireError(DEMO_MESSAGE, 403)
     if report is not None:
         if report.status == "ready":
             if report.stories_at is None:

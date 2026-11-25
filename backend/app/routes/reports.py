@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from ..extensions import db
 from ..models import Answer, Question, Session
-from ..services import afterwards, limits, privacy, reports, scoring
+from ..services import access, afterwards, limits, privacy, reports, scoring
 from .common import current_user_id, first_error
 from .sessions import TurnBody, owned_session
 
@@ -47,6 +47,8 @@ def share_report(session_id: int):
     report = reports.get_report(session) if session else None
     if report is None or report.status != "ready":
         return jsonify(error="Share the report once it's ready"), 409
+    if access.current_is_demo():
+        return jsonify(error="Demo reports can't be shared"), 403
     return jsonify(share_token=privacy.share_report(report))
 
 

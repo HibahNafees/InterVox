@@ -67,6 +67,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     from .routes.documents import bp as documents_bp
     from .routes.health import bp as health_bp
     from .routes.lab import bp as lab_bp
+    from .routes.orgs import bp as orgs_bp
     from .routes.reports import bp as reports_bp
     from .routes.reports import shared_bp
     from .routes.reverse import bp as reverse_bp
@@ -84,6 +85,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(lab_bp, url_prefix="/api/lab")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(orgs_bp, url_prefix="/api/orgs")
     app.register_blueprint(documents_bp, url_prefix="/api/documents")
     app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
     app.register_blueprint(reports_bp, url_prefix="/api/sessions")
@@ -114,8 +116,13 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     @jwt.user_lookup_loader
     def load_user(_header, payload):
         from .models import User
+        from .services.access import demo_token_ok
 
-        return db.session.get(User, int(payload["sub"]))
+        user = db.session.get(User, int(payload["sub"]))
+        # A demo account (T-166) is usable only through an admin's View as.
+        if user is not None and not demo_token_ok(user, payload):
+            return None
+        return user
 
     @jwt.user_lookup_error_loader
     def missing_user(_header, _payload):
