@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import DemoPanel from '../components/DemoPanel'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 
 function usd(n) {
   return `$${n < 0.01 && n > 0 ? n.toFixed(4) : n.toFixed(2)}`
 }
 
 export default function Admin() {
+  const { user } = useAuth()
   const [usage, setUsage] = useState(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -31,6 +34,8 @@ export default function Admin() {
         <p className="eyebrow">Admin</p>
         <h1 className="mt-1 text-3xl font-extrabold text-slate-900">Usage and Fire spend</h1>
       </header>
+
+      {user?.can_use_demo && <DemoPanel />}
 
       <div className="card grid gap-4 p-6 sm:grid-cols-3">
         <div>

@@ -18,6 +18,26 @@ export function setToken(token) {
   }
 }
 
+// While an admin views the demo (T-166), their own token waits here.
+const ADMIN_TOKEN_KEY = 'mi_admin_token'
+
+export function getAdminToken() {
+  try {
+    return localStorage.getItem(ADMIN_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setAdminToken(token) {
+  try {
+    if (token) localStorage.setItem(ADMIN_TOKEN_KEY, token)
+    else localStorage.removeItem(ADMIN_TOKEN_KEY)
+  } catch {
+    // Storage unavailable: Back to admin falls back to signing in again.
+  }
+}
+
 export class ApiError extends Error {
   constructor(message, status) {
     super(message)

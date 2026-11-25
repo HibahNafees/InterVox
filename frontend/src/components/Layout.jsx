@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { staffOrg } from '../lib/orgs'
 import { Mascot } from './Art'
 import InstallApp from './InstallApp'
 import ThemeToggle from './ThemeToggle'
@@ -34,14 +35,44 @@ export function Logo({ onColor = false, compact = false }) {
   )
 }
 
+// Shown while an admin views a demo account (T-166).
+function DemoBar({ user, onBack }) {
+  return (
+    <div className="bg-amber-100 text-amber-900 print:hidden">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
+        <span className="chip bg-amber-300 text-amber-950">Demo</span>
+        <span>
+          Viewing as the demo {user.demo_role}, <strong>{user.name}</strong>. Fictional data; AI features are off.
+        </span>
+        <button onClick={onBack} className="ml-auto font-semibold underline underline-offset-4">
+          Back to admin
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, backToAdmin } = useAuth()
+  const navigate = useNavigate()
+  const coachOrg = staffOrg(user)
+  const nav = [
+    ...(coachOrg ? [['/coach', 'Coach']] : []),
+    ...NAV,
+    ...(user?.is_admin ? [['/admin', 'Admin']] : []),
+    ...(user?.can_use_demo ? [['/demo', 'Demo']] : []),
+  ]
+  async function back() {
+    await backToAdmin()
+    navigate('/admin')
+  }
   const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
   // Phones: the nav folds behind a Menu button and closes after each move (T-150).
   useEffect(() => setMenuOpen(false), [pathname])
   return (
     <div className="min-h-screen text-slate-800">
+      {user?.is_demo && <DemoBar user={user} onBack={back} />}
       <header className="sticky top-0 z-10 border-b border-line bg-cream/85 pt-[env(safe-area-inset-top)] backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
           <Link to="/" aria-label="InterVox home">
@@ -52,7 +83,7 @@ export default function Layout() {
             aria-label="Main"
             className={`${menuOpen ? 'flex' : 'hidden'} order-last w-full flex-col gap-0.5 text-sm sm:order-none sm:flex sm:w-auto sm:flex-row sm:flex-wrap`}
           >
-            {[...NAV, ...(user?.is_admin ? [['/admin', 'Admin']] : [])].map(([to, label]) => (
+            {nav.map(([to, label]) => (
               <NavLink
                 key={to}
                 to={to}
@@ -69,7 +100,7 @@ export default function Layout() {
             {user && (
               <span className="flex items-center justify-between gap-2 border-t border-line px-3 pt-3 sm:hidden">
                 <InstallApp />
-                <button onClick={() => logout()} className="btn-link ml-auto">
+                <button onClick={() => (user.is_demo ? back() : logout())} className="btn-link ml-auto">
                   Log out
                 </button>
               </span>
@@ -94,7 +125,7 @@ export default function Layout() {
                 </span>
                 <span className="sr-only">{user.name}</span>
               </Link>
-              <button onClick={() => logout()} className="btn-link hidden sm:inline">
+              <button onClick={() => (user.is_demo ? back() : logout())} className="btn-link hidden sm:inline">
                 Log out
               </button>
               <button

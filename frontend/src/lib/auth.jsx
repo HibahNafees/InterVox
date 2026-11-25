@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { api, getToken, setToken } from './api'
+import { api, getAdminToken, getToken, setAdminToken, setToken } from './api'
 
 const AuthContext = createContext(null)
 
@@ -13,8 +13,42 @@ export function AuthProvider({ children }) {
     if (!getToken()) return
     api('/auth/me')
       .then((data) => setUser(data.user))
-      .catch(() => setToken(null))
+      .catch(async () => {
+        setToken(null)
+        // A demo view that expired (2 hours): back to the admin's own session.
+        const admin = getAdminToken()
+        setAdminToken(null)
+        if (!admin) return
+        setToken(admin)
+        try {
+          setUser((await api('/auth/me')).user)
+        } catch {
+          setToken(null)
+        }
+      })
       .finally(() => setLoading(false))
+  }, [])
+
+  // Admin only (T-166): open a demo account in this tab, keeping the admin's
+  // own token aside for Back to admin.
+  const viewAsDemo = useCallback(async (kind) => {
+    const data = await api('/demo/view-as', { method: 'POST', body: { view_as: kind } })
+    if (!getAdminToken()) setAdminToken(getToken())
+    setToken(data.access_token)
+    setUser((await api('/auth/me')).user)
+  }, [])
+
+  const backToAdmin = useCallback(async () => {
+    const admin = getAdminToken()
+    setAdminToken(null)
+    setToken(admin)
+    // Swap users in one step: clearing first would bounce to the login page.
+    try {
+      setUser(admin ? (await api('/auth/me')).user : null)
+    } catch {
+      setToken(null)
+      setUser(null)
+    }
   }, [])
 
   const handleAuth = useCallback((data) => {
@@ -45,12 +79,13 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback((message = '') => {
     setToken(null)
+    setAdminToken(null)
     setUser(null)
     setNotice(typeof message === 'string' ? message : '')
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, googleLogin, logout, notice }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, googleLogin, logout, notice, viewAsDemo, backToAdmin }}>
       {children}
     </AuthContext.Provider>
   )
