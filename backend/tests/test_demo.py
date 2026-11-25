@@ -238,3 +238,12 @@ def test_demo_reset_cli(app, fire):
     assert result.exit_code == 0 and "6 candidates" in result.output
     assert fire.calls == []
     assert count(ReportComment) >= 2 and count(QuestionBankItem) >= 5
+
+
+def test_demo_reset_clear_removes_everything(app, signup, fire):
+    signup()
+    runner = app.test_cli_runner()
+    runner.invoke(args=["demo-reset"])
+    result = runner.invoke(args=["demo-reset", "--clear"])
+    assert result.exit_code == 0 and "Demo deleted" in result.output
+    assert count(Organization) == 0 and count(User) == 1 and count(Session) == 0

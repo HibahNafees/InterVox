@@ -1,3 +1,4 @@
+import click
 from flask import Flask, jsonify
 from flask_cors import CORS
 
@@ -102,11 +103,16 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         print(f"Deleted {purge_expired_documents()} expired documents")
 
     @app.cli.command("demo-reset")
-    def demo_reset():
+    @click.option("--clear", is_flag=True, help="Only delete the demo, don't re-seed.")
+    def demo_reset(clear: bool):
         """Delete and re-seed the fictional demo org (no Fire calls; run nightly)."""
-        from .services.demo import reset
+        from .services import demo
 
-        counts = reset()
+        if clear:
+            demo.clear()
+            print("Demo deleted")
+            return
+        counts = demo.reset()
         print("Demo reset: " + ", ".join(f"{v} {k}" for k, v in counts.items()))
 
     @jwt.unauthorized_loader
