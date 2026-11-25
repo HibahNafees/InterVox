@@ -165,4 +165,4 @@ Organizations (admin, coach, candidate), the coach dashboard, assignments, coach
 
 Local end-to-end check (headless Chromium): View as demo coach → dashboard (2 flagged), Jordan's page, report with comment → Back to admin → View as demo candidate → assignments, streak, goal, practice queue, report with the coach's comment; Start and Setup show the demo message. A regular account sees no Coach/Demo links, and curl gets 404 on `/api/orgs/...` and `/api/demo` both signed out and as a regular user.
 
-**Open from this check:** T-167.
+**Open from this check:** none. T-167 was closed as deferred on 2026-11-25: not needed while the feature is admin-only, but it must be built before `ORG_FEATURE=on`.
