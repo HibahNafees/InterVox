@@ -146,3 +146,23 @@ Backend weak 2.11 (no hire) vs strong 3.86; sales weak 2.51 (no hire) vs strong 
 | Live behavior | ✅ | Live check on 2026-11-18 after deploy, with a temporary account deleted afterwards ($0.0019 total): the prep chat gave 3 role-fit questions and a STAR outline built only from the résumé, then asked for a real example instead of inventing one; the debate gave a fair case for and a fair case against (no personal attacks) and the judge scored 3/5 with three reasons and one tip; compare answered with GPT-4o mini at 0 and Claude Haiku 4.5 at 1 side by side; temperature 2 was refused (400); at 9 of 10 calls a compare was refused (429) with no call made and usage stayed at 9. |
 
 **Open from this check:** none.
+
+## Check after the agency demo (2026-11-25, T-166)
+
+Organizations (admin, coach, candidate), the coach dashboard, assignments, coach comments, consent, branding, and the seeded "Northstar Career Partners" demo. Admin-only by default (`ORG_FEATURE=admin_only`).
+
+| Area | Status | Evidence / gap |
+|---|---|---|
+| Consent (safety and privacy) | ✅ | A coach sees a candidate's reports only while `org_members.consent_at` is set. Joining an org and sharing reports are separate steps (Join page checkbox, off by default), and the candidate can stop sharing on the Account page. Before consent, or after it is withdrawn, every coach route for that candidate returns 404 (`test_coach_sees_nothing_until_the_candidate_consents`). |
+| Data separation | ✅ | Every org route is scoped to an org the caller belongs to; another org's coach gets 404 for candidates, reports and comments (`test_coach_of_another_org_sees_nothing`). Real accounts can't join the demo org, and demo accounts can't join or create orgs. |
+| Access (admin-only) | ✅ | Every `/api/orgs` and `/api/demo` route returns 404 to signed-out visitors, regular users, bad tokens, and everyone when `ORG_FEATURE=off`. A table test checks every registered route, so a new route can't go untested (`tests/test_orgs_access.py`). Demo accounts have no password, can't log in, and only open through an admin's 2-hour View as token, which is re-checked against `ADMIN_EMAILS` on every request. A regular user's `/auth/me` and pages are unchanged, and the website never calls org APIs for them (`Orgs.test.jsx`). |
+| Cost (hard rule 1) | ✅ | Demo accounts never reach Fire: `fire.get_fire()` refuses them (403 "demo account"), and report generation is refused for their unfinished reports. The seed is hand-written and makes no Fire calls (`FakeFire.calls == []` in `test_demo.py`). No change to caps or budget for current users. |
+| Deletion and retention | ⚠️ | All new tables cascade from users and orgs, so Delete my data removes memberships, assignments and comments (`test_deleting_the_candidate_removes_their_org_data`). The JD a candidate starts from an assignment is a normal 30-day document. Gaps: a candidate can't leave an org (only stop sharing), invite links can't be revoked early, and coach comments can't be edited or deleted: **T-167** (needed before `ORG_FEATURE=on`). |
+| Scores are practice feedback (hard rule 6) | ✅ | The coach dashboard says "Scores are practice feedback from an AI interviewer, not hiring assessments". Coach report views reuse the read-only report, including the licensed-profession disclaimer (demo nurse: `licensed_field` true). |
+| Never invent experience (hard rule 4) | ✅ | Demo stronger versions use only the fictional résumé and answer facts, with `[placeholders]` for missing results. Every person and employer is fictional and marked with a Demo badge. |
+| Final report | ✅ | Seeded reports have question scores with per-criterion comments, takeaways, recommended exercises, stronger versions and delivery analytics. Weighted scores, verdicts and delivery come from the app's own code (`weighted_score`, `verdict_for`, `analytics.delivery`). |
+| Interviewer behavior, adaptive difficulty, personalities, modes, story bank | ✅ | Unchanged. Coaches only read reports; they don't change scoring. |
+
+Local end-to-end check (headless Chromium): View as demo coach → dashboard (2 flagged), Jordan's page, report with comment → Back to admin → View as demo candidate → assignments, streak, goal, practice queue, report with the coach's comment; Start and Setup show the demo message. A regular account sees no Coach/Demo links, and curl gets 404 on `/api/orgs/...` and `/api/demo` both signed out and as a regular user.
+
+**Open from this check:** T-167.

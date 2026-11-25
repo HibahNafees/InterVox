@@ -98,6 +98,12 @@ If Oracle ever works out, move with a backup (section 4) and the same `.env`.
   `0 3 * * * $HOME/InterVox/deploy/backup.sh` (on the devbox, `/srv/intervox/deploy/backup.sh`). Restore with
   `gunzip -c ~/backups/db-DATE.sql.gz | docker compose exec -T db sh -c 'mysql -u mock -p"$MYSQL_PASSWORD" mock_interviewer'`.
 - **Expired documents** are deleted daily by the `purge` service.
+- **Sales demo** (T-166): `docker compose exec -T api flask demo-reset` deletes and
+  re-seeds the fictional "Northstar Career Partners" org (no Fire calls). Run it
+  nightly from root's crontab so dates, streaks and the demo's edits stay fresh:
+  `30 4 * * * cd /srv/intervox && docker compose -f docker-compose.yml -f deploy/compose.devbox.yml exec -T api flask demo-reset >> /var/log/intervox-demo.log 2>&1`.
+  `ORG_FEATURE` (`off` / `admin_only` / `on`, default `admin_only`) decides who
+  can see organizations; demo accounts open only from `/admin` (View as).
 - **Before each deploy:** `cd frontend && npm audit` (should report 0).
 
 ## 5. Local check of the stack

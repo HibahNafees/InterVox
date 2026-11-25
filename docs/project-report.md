@@ -2,7 +2,7 @@
 
 *How we built InterVox, an AI practice interviewer, from the first spec to the live site.*
 
-Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `aba1cc3` (deployed 2026-11-25 with three rewrite fixes, **T-162–T-164**); the deploy before it, `43c7ea7`, added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). A fresh eval of 21 AI-candidate interviews shows strong answers scoring 3.98/5 on average against 2.37 for weak ones (§8), and a one-page `README.md` sums the project up for readers who won't open this report (**T-160**). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions, and every build installs as an update (**T-157, T-159**).
+Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `aba1cc3` (deployed 2026-11-25 with three rewrite fixes, **T-162–T-164**); the deploy before it, `43c7ea7`, added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). A fresh eval of 21 AI-candidate interviews shows strong answers scoring 3.98/5 on average against 2.37 for weak ones (§8), and a one-page `README.md` sums the project up for readers who won't open this report (**T-160**). An admin-only **agency demo** (organizations, a coach dashboard and a fictional seeded agency) was built on 2026-11-25 and waits for its server deploy (**T-166**, §5). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions, and every build installs as an update (**T-157, T-159**).
 
 **Sources.** This report uses only the project's own records: the git history (166 commits up to `aba1cc3`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (145 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
 
@@ -30,7 +30,7 @@ Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live
 
 Each user can make **10 Chat Lab calls a day** (a chat uses 1, a compare 2, a debate 3), on top of the monthly budget, so no single user can spend the whole budget.
 
-**On phones and sign-in.** InterVox also runs as an **Android app** (the same site wrapped with Capacitor) and can be **installed from the website** as a web app, with layouts made for small screens (**T-147–T-151**). People can sign up and log in with **Google** on the website and in the app (**T-156**).
+**On phones and sign-in.** An admin-only **agency demo** (organizations, a coach dashboard and a fictional seeded agency) was built on 2026-11-25 and waits for its server deploy (**T-166**, §5). InterVox also runs as an **Android app** (the same site wrapped with Capacitor) and can be **installed from the website** as a web app, with layouts made for small screens (**T-147–T-151**). People can sign up and log in with **Google** on the website and in the app (**T-156**).
 
 **Framing.** Scores are practice feedback, not an assessment. A disclaimer is shown for licensed or specialized professions (hard rule 6).
 
@@ -220,6 +220,15 @@ Every server deploy after go-live went through a ticket with a deploy plan, a hu
 - **Confirm dialog** (`components/ConfirmDialog.jsx`): every "are you sure?" uses the app's own accessible dialog instead of the browser popup: Cancel focused first, Esc or a click outside cancels, focus stays inside, a loading state while it works, and a short "deleted" message afterwards. **Your interviews** can be collapsed to the 3 most recent with **Show all (N)**; the choice is remembered per browser (**T-137**).
 - Admin usage page (`ADMIN_EMAILS`).
 - Light theme by default with a dark switch (**T-78, T-86**).
+
+**For career agencies (admin-only demo, T-166)**
+- **Organizations** with admin, coach and candidate roles. Coaches invite candidates with a link that's valid for 14 days. Each org's data is separate: another org's coach gets "Not found".
+- **Consent first:** joining an org doesn't share anything. A candidate ticks "Share my interview reports" separately and can stop sharing on the Account page; until then the coach sees only the name.
+- **Coach dashboard** (`/coach`): each candidate's latest score, a trend line, the change since their first interview, up to three weak areas (skills under 3.5), and a **Needs practice** flag (latest score under 3, no interview for 7 days, or an overdue assignment). From there the coach opens a candidate's stats and read-only reports and leaves comments, which the candidate sees on their report.
+- **Assignments:** the coach sets a role, job description, length (5–60 minutes) and due date. The candidate sees it on their dashboard, and Start opens Setup with the job description and length already filled in.
+- **Branding:** the org's logo (under 100 KB) and primary color on its pages.
+- **Admin-only for now:** one setting, `ORG_FEATURE` (`off`, `admin_only`, `on`; default `admin_only`). Every org and demo API route returns 404 to signed-out visitors and regular users, and a test checks each registered route. Regular users see no new links, and their `/auth/me` is unchanged.
+- **The demo:** "Northstar Career Partners", a fictional org with 1 coach and 6 candidates in six fields. Each candidate has 2–3 hand-written reports. Two are fully demo-ready: Alex Chen, a backend engineer improving from 2.8 to 4.3, and Jordan Reyes, a customer success manager stuck around 2.1–2.6 and flagged. They come with a streak, goal, stories, practice queue, a to-do assignment, and a done one with the coach's comment. The seed makes **no Fire calls**: weighted scores, verdicts and delivery figures come from the app's own code. `flask demo-reset` rebuilds it nightly. Demo accounts have no password; an admin opens them with **View as demo coach / candidate** on `/admin` or the `/demo` pitch page (a 2-hour token, re-checked against `ADMIN_EMAILS` on every request). Demo accounts can't call Fire, log in, delete themselves or share links, and every page shows a Demo bar with **Back to admin**.
 
 **On phones**
 - **Android app** (**T-147**): the same site wrapped with Capacitor 8, with an InterVox launcher icon and splash, and a mic-permission message that points to Android settings (**T-151**).
@@ -412,7 +421,8 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 
 - **What it shows:** strong beat weak in all 7 fields (backend, sales, healthcare, media, business, teaching, trades) by 1.6 points on average, and beat rambling in all 7 by 0.42. Every persona stayed in character, all runs finished, and no interviewer line was disrespectful.
 - **Not yet seen in a live session:** the T-162–T-164 rewrite fixes (tests and the offline check on 98 eval rewrites pass; master verified the deploy's health, not the rewrites).
-- **Open tickets:** none as of 2026-11-25. All 145 InterVox tickets are closed (106 problems, 35 ideas, 4 run tickets).
+- **Agency demo (T-166), built 2026-11-25:** backend and website done and tested (all org/demo routes 404 for signed-out visitors and regular users; zero Fire calls from the seed or demo accounts), and checked end to end in a local browser. It goes live with the next server deploy, including the 04:30 `flask demo-reset` cron. Before `ORG_FEATURE=on`: let candidates leave an org, revoke invite links, and edit or delete comments (**T-167**).
+- **Open tickets:** T-166 (until it's deployed) and T-167. The other 145 InterVox tickets are closed (106 problems, 35 ideas, 4 run tickets).
 - *Unclear:*
   - The sources don't record total Fire spend for October; the live database couldn't be read from this session. The rules check and run tickets log individual check costs (for example ~$0.034, ~$0.05, $0.0744, $0.0768).
   - Ticket numbers are shared across the devbox. The gaps in InterVox's list (T-1–T-11, T-28, T-50, T-59, T-67, T-110, T-131, T-144, T-152) aren't InterVox tickets in the database, and the sources don't say what happened to them.
