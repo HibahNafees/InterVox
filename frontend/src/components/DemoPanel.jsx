@@ -58,8 +58,8 @@ export default function DemoPanel({ intro = null }) {
         <button className="btn-secondary" disabled={!demo.seeded || !!busy} onClick={() => open('candidate', '/')}>
           {busy === 'candidate' ? 'Opening…' : 'View as demo candidate'}
         </button>
-        <button className="btn-link" disabled={!demo.seeded || !!busy} onClick={() => open('struggling', '/')}>
-          {busy === 'struggling' ? 'Opening…' : 'or the struggling candidate'}
+        <button className="btn-secondary" disabled={!demo.seeded || !!busy} onClick={() => open('struggling', '/')}>
+          {busy === 'struggling' ? 'Opening…' : 'View as struggling candidate'}
         </button>
       </div>
       {error && (
