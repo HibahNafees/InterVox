@@ -63,6 +63,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     from .routes.common import register_error_handlers
     from .routes.company import bp as company_bp
     from .routes.debriefs import bp as debriefs_bp
+    from .routes.demo import bp as demo_bp
     from .routes.decoder import bp as decoder_bp
     from .routes.documents import bp as documents_bp
     from .routes.health import bp as health_bp
@@ -85,6 +86,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(lab_bp, url_prefix="/api/lab")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(demo_bp, url_prefix="/api/demo")
     app.register_blueprint(orgs_bp, url_prefix="/api/orgs")
     app.register_blueprint(documents_bp, url_prefix="/api/documents")
     app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
@@ -98,6 +100,14 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         from .services.privacy import purge_expired_documents
 
         print(f"Deleted {purge_expired_documents()} expired documents")
+
+    @app.cli.command("demo-reset")
+    def demo_reset():
+        """Delete and re-seed the fictional demo org (no Fire calls; run nightly)."""
+        from .services.demo import reset
+
+        counts = reset()
+        print("Demo reset: " + ", ".join(f"{v} {k}" for k, v in counts.items()))
 
     @jwt.unauthorized_loader
     def missing_token(reason: str):
