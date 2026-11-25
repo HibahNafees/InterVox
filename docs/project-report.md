@@ -2,9 +2,9 @@
 
 *How we built InterVox, an AI practice interviewer, from the first spec to the live site.*
 
-Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `43c7ea7`, which added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions, and every build installs as an update (**T-157, T-159**).
+Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `aba1cc3` (deployed 2026-11-25 with three rewrite fixes, **T-162–T-164**); the deploy before it, `43c7ea7`, added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). A fresh eval of 21 AI-candidate interviews shows strong answers scoring 3.98/5 on average against 2.37 for weak ones (§8), and a one-page `README.md` sums the project up for readers who won't open this report (**T-160**). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions, and every build installs as an update (**T-157, T-159**).
 
-**Sources.** This report uses only the project's own records: the git history (160 commits up to `bafdffe`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (139 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
+**Sources.** This report uses only the project's own records: the git history (166 commits up to `aba1cc3`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (144 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
 
 ---
 
@@ -66,7 +66,7 @@ Each user can make **10 Chat Lab calls a day** (a chat uses 1, a compare 2, a de
 | Hosting (actual) | The **devbox** server: Docker Compose (db, api, purge) behind **nginx + certbot**; frontend on **Vercel Hobby** | Free. nginx already owned ports 80/443 on the devbox (`docs/DEPLOY.md` §2b, `commit 27501f6`). |
 | Domain / HTTPS | **DuckDNS** (`intervox.duckdns.org`), Let's Encrypt via certbot (Caddy on the Oracle path) | Free subdomain with automatic HTTPS. Microphone access requires HTTPS (`DEPLOY.md`). |
 | Testing | pytest (442 backend tests), Vitest 5 + Testing Library (169 frontend tests), black, ESLint | `CLAUDE.md` convention: every feature gets a test, and Fire is always mocked. Vitest went from version 3 to 5 to clear npm audit findings (**T-54**). |
-| Evals | `evals/run.py`: AI candidates (strong, weak and rambling) run through the real API with a simulated clock and a budget guard | Measures whether scores separate good answers from weak ones (`commit c8cc4d4`, **T-72–T-75**). |
+| Evals | `evals/run.py`: AI candidates (strong, weak and rambling) run through the real API with a simulated clock and a budget guard | Measures whether scores separate good answers from weak ones (`commit c8cc4d4`, **T-72–T-75**). The 2026-11-25 run (21 interviews, $0.43) is in §8 and the README (**T-160, T-161**). |
 | Coordination | `pm` CLI and `orchestration.tickets` on the devbox; a separate "master" agent session deploys | Every problem gets a ticket. Deploys go through a human approval gate (`/home/hibahnafees/CLAUDE.md`). |
 | Optional, not built | LiveKit Agents (real-time voice), Hume EVI (emotion experiment) | Phases 11–12 in `CLAUDE.md`; listed in the spec as optional. |
 
@@ -156,6 +156,8 @@ Most of the work happened in 7 days in October: Oct 6 (2 commits), Oct 8 (1), Oc
 | 11-23/24 | Deploy and phone test | Master deployed `43c7ea7`; Google sign-in, an interview in the app and the PWA install checked on an Android phone | — | T-149–T-151 closed |
 | 11-25 | **APK in GitHub Actions** | The signed release APK is built in CI on demand and on frontend pushes, with a check of the signing certificate; first run passed and the app installed and worked | `1e7d753`, `105fec4` | T-157 |
 | 11-25 | **APK versions** | `versionCode` = 100 + the Actions run number and `versionName` `1.1.<run>`, checked in the built APK; each APK sent to the phone installs as an update and keeps the user's data | `d550abe`, `bafdffe` | T-158, T-159 |
+| 11-25 | **Eval, README and rewrite fixes** | Live eval of 7 fields × strong/weak/rambling; persona check judges only scored answers; three rewrite fixes found from it; one-page README with screenshots and results; each APK published as a GitHub Release | `b598725`, `fca7d5a`, `3d9cebf`, `aba1cc3` | T-160–T-164 |
+| 11-25 | Deploy | Master deployed `aba1cc3` (scoring change only on the server; no migration) | — | T-162–T-164 closed |
 
 Every server deploy after go-live went through a ticket with a deploy plan, a human `pm approve`, and the master agent pulling and rebuilding (§7).
 
@@ -310,6 +312,12 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
   - its first live tests produced false positives ("p95" was split apart, and "retry" didn't match "retries"), fixed in **T-120** and **T-128**.
   - a general question ("how would you optimize a PostgreSQL schema?") answered about something else (idempotency keys "stored in PostgreSQL") kept Relevance 4, because word matching can't judge a general subject (**T-142**). A narrow `subject_check` call now sees only the main question and the candidate's words; a clear "no" caps Relevance at 2 and the rewrite becomes a skeleton for answering the actual question. A first try inside the gap check was reverted after it capped a strong on-topic answer; the narrow check was right in 20 of 20 live cases, vague on-topic answers included.
 - **Results in rewrites (T-107, T-121, T-123, T-126):** a stated result was replaced by a placeholder, repeated, dropped, or left next to a redundant placeholder. Each case is now handled in `fill_result`.
+- **Found by the 2026-11-25 eval (T-161–T-164):**
+  - **T-162:** `fill_result` still appended the candidate's result when the rewrite had told it in other words ("successfully reduced the failure rate to 0.2%" vs the quote "which reduced the failure rate to an impressive 0.2%"); it now uses the same looser check (numbers, or most of the words) as the no-placeholder path.
+  - **T-163:** rewrites of weak answers kept "I guess…" and "we kind of…"; `drop_soft_hedges` removes them (only after I/we/they/just/and, so "what kind of tool" stays).
+  - **T-164:** a rewrite asked "[add the result you achieved]" right before a sentence giving a résumé result; the placeholder now goes when a sentence starts "As a result", "In the end", "Ultimately" or "This resulted in/led to".
+  - Checked offline on all 98 eval rewrites: only the 4 targeted ones changed.
+  - **T-161:** a rambling backend candidate scored 4.04 ("hire") next to the strong one's 4.07. Its answers held the same facts in the same order, padded with filler and generic lessons; by design filler is never marked down (delivery feedback covers it). Structure/Clarity anchors added to the prompt were re-scored live on the same answers ($0.038) and changed nothing, so they were reverted, and the user kept the design. The harness's persona check had also flagged two false drifts, because it counted small talk and wrap-up replies; it now judges only answers to scored questions.
 
 ### 6.7 Browser and recorder
 - **T-51:** Monaco's CDN loader defined a global `define()` that broke Excalidraw and MediaPipe. Fixed by bundling Monaco.
@@ -351,7 +359,7 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
   - the keystore and its passwords come from four repository secrets (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`), are written only into the runner's temp folder and are deleted after the build; they are never printed;
   - the build fails unless the APK has exactly one signer whose SHA-1 is the release certificate's (`84:EA:2A:…:00:2B`), so a wrong keystore can't produce an APK that won't update the installed app or breaks Google sign-in;
   - the version comes from the run number (**T-158, T-159**): `versionCode` = 100 + run number and `versionName` = `1.1.<run>`, passed to Gradle as `INTERVOX_VERSION_CODE`/`INTERVOX_VERSION_NAME` (local builds default to 2 / 1.1). The +100 keeps CI builds above the hand-set 2, and the run reads the version back from the APK with `aapt2` and fails if it differs. Android refuses to install a lower `versionCode` over a higher one, so this keeps every CI APK installable as an update;
-  - the APK is uploaded as a run artifact (`intervox-apk-1.1.<run>`), kept 30 days;
+  - the APK is uploaded as a run artifact (`intervox-apk-1.1.<run>`), kept 30 days, and a separate `release` job (write access to releases, no signing secrets) publishes it as GitHub Release `v1.1.<run>` with a fixed `InterVox.apk`, so `releases/latest/download/InterVox.apk` always serves the newest build without a GitHub login (**T-160**; `v1.1.5` checked);
   - building on a Mac with the same keystore (kept outside the repo) still works as a fallback (`docs/ANDROID.md`);
   - Google sign-in in the app needs an Android OAuth client tied to that keystore's SHA-1 (`docs/GOOGLE_SIGN_IN.md`).
 - **Security headers:** HSTS, `nosniff`, `X-Frame-Options: DENY`, Referrer-Policy and Permissions-Policy, on both nginx/Caddy and Vercel. The API host answers only `/api/*`; everything else gets 404.
@@ -394,7 +402,17 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 - **Phase 11 (optional):** real-time voice with LiveKit (interruptions, peer practice). **Phase 12 (optional):** a Hume EVI emotion experiment (`CLAUDE.md`). Neither has started.
 - **Oracle:** `DEPLOY.md` notes the stack can move to Oracle later with a backup and the same `.env`, "if Oracle ever works out".
 - **Checked 2026-11-25:** the first GitHub Actions APK run passed the signing check, and the APK it produced installed and worked on the phone (**T-157**). A later run-numbered APK installed on the phone as an update over the existing app (**T-159**).
-- **Open tickets:** none as of 2026-11-25. All 139 InterVox tickets are closed (102 problems, 33 ideas, 4 run tickets).
+- **Eval results, 2026-11-25** (`evals/results/eval-20261125-024923.json`, 21 live interviews of 10 minutes, $0.43; **T-160, T-161**):
+
+| Persona | Average / 5 | Range | Verdicts |
+|---|---|---|---|
+| Strong | 3.98 | 3.76–4.13 | 4 hire, 3 lean hire |
+| Rambling | 3.56 | 2.63–4.04 | 1 hire, 5 lean hire, 1 no hire |
+| Weak | 2.37 | 2.11–2.63 | 7 no hire |
+
+- **What it shows:** strong beat weak in all 7 fields (backend, sales, healthcare, media, business, teaching, trades) by 1.6 points on average, and beat rambling in all 7 by 0.42. Every persona stayed in character, all runs finished, and no interviewer line was disrespectful.
+- **Not yet seen in a live session:** the T-162–T-164 rewrite fixes (tests and the offline check on 98 eval rewrites pass; master verified the deploy's health, not the rewrites).
+- **Open tickets:** none as of 2026-11-25. All 144 InterVox tickets are closed (106 problems, 34 ideas, 4 run tickets).
 - *Unclear:*
   - The sources don't record total Fire spend for October; the live database couldn't be read from this session. The rules check and run tickets log individual check costs (for example ~$0.034, ~$0.05, $0.0744, $0.0768).
   - Ticket numbers are shared across the devbox. The gaps in InterVox's list (T-1–T-11, T-28, T-50, T-59, T-67, T-110, T-131, T-144, T-152) aren't InterVox tickets in the database, and the sources don't say what happened to them.
