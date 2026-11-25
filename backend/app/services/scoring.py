@@ -501,9 +501,11 @@ def fill_result(stronger: str, result_quote: str | None) -> str:
             return stronger
         return f"{stronger.strip()} {sentence}".strip()
     parts = re.split(r"(?<=[.!?])\s+", stronger.strip())
-    # The rewrite already tells it elsewhere: just drop the placeholder (T-121).
+    # The rewrite already tells it elsewhere: just drop the placeholder (T-121),
+    # also when it tells it in other words ("successfully reduced the failure rate
+    # to 0.2%" for "which reduced the failure rate to an impressive 0.2%", T-162).
     rest = " ".join(p for p in parts if not RESULT_PLACEHOLDER_RE.search(p))
-    out, used = [], _norm(quote) in _norm(rest)
+    out, used = [], _tells_result(rest, quote)
     for part in parts:
         if RESULT_PLACEHOLDER_RE.search(part):
             if not used:

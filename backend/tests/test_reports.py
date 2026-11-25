@@ -534,6 +534,19 @@ def test_fill_result_only_replaces_result_placeholders():
         )
         == "I paired with him. And we haven't had a locking incident since."
     )
+    # T-162 (eval): told in other words, so the quote isn't appended again.
+    told = (
+        "I added a queue with retries, which successfully reduced the failure rate "
+        "to 0.2%. [add the result you achieved]"
+    )
+    quote = (
+        "which reduced the failure rate to an impressive 0.2%. This not only "
+        "improved user experience"
+    )
+    assert fill_result(told, quote) == (
+        "I added a queue with retries, which successfully reduced the failure rate "
+        "to 0.2%."
+    )
 
 
 def test_paragraph_items_are_checked_sentence_by_sentence():
