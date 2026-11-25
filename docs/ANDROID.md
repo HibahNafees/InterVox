@@ -70,17 +70,29 @@ gh secret set KEY_PASSWORD -R HibahNafees/InterVox         # paste keyPassword
 - After the build, `apksigner verify --print-certs` must show exactly one signer whose
   SHA-1 is the release fingerprint above; otherwise the run fails and no APK is uploaded.
 
-### Download and install
+### Version numbers
 
-Open the run → **Artifacts** → `intervox-apk-<commit>` (kept 30 days). It downloads as a
-zip holding `intervox-<short commit>.apk`. Unzip it, then either `adb install -r
-intervox-*.apk`, or copy the APK to the phone and open it (allow "Install unknown apps"
-for the browser/files app once). From the command line:
-`gh run download -R HibahNafees/InterVox -n intervox-apk-<full commit sha>`.
+Each run sets the version from its run number (T-159): `versionCode` = 100 + run number,
+`versionName` = `1.1.<run number>`. So every new run's APK is newer than the last one and
+installs as an update, keeping your sign-in and data; you never edit `build.gradle` for a
+CI release. The run checks the built APK's version with `aapt2` and fails if it's wrong.
+Re-running the same run gives the same version.
 
-Because the CI build uses the same keystore, it installs over a Mac-built app and keeps
-its data. Bump `versionCode`/`versionName` in `android/app/build.gradle` for each release
-you hand out, as below.
+### Download and install on the phone
+
+1. Open the run → **Artifacts** → `intervox-apk-1.1.<run>` (kept 30 days). It downloads
+   as a zip holding `intervox-1.1.<run>.apk`; unzip it.
+2. Send the APK to the phone (e.g. email it to yourself, Google Drive, or a USB cable).
+3. On the phone, open the file and tap **Update** (the first time, allow "Install unknown
+   apps" for the app you opened it from). Settings → Apps → InterVox shows the new version.
+
+Or from a computer: `adb install -r intervox-1.1.<run>.apk`, or
+`gh run download -R HibahNafees/InterVox -n intervox-apk-1.1.<run>`.
+
+CI and Mac builds use the same keystore, so either installs over the other, but Android
+refuses a *lower* `versionCode`. A Mac build defaults to `versionCode` 2, below every CI
+build, so to install one over a CI build, build it with a higher number:
+`INTERVOX_VERSION_CODE=<higher> INTERVOX_VERSION_NAME=<name> ./gradlew assembleRelease`.
 
 ## Build on a Mac (fallback)
 
@@ -129,5 +141,5 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 `apksigner` lives in `$ANDROID_HOME/build-tools/<version>/`. If `assembleRelease`
 produces `app-release-unsigned.apk`, Gradle did not find `~/.intervox/keystore.properties`.
 
-For each update, bump `versionCode` (and `versionName`) in `android/app/build.gradle`
-before building so `adb install -r` keeps the app's data.
+For each Mac update, set `INTERVOX_VERSION_CODE` above the installed app's version code
+(see *Version numbers*) so `adb install -r` keeps the app's data.

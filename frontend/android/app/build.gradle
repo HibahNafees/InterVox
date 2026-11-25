@@ -16,8 +16,10 @@ android {
         applicationId "site.intervox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1"
+        // CI (T-159) sets INTERVOX_VERSION_CODE = 100 + run number, so every Actions build
+        // installs as an update. Local builds fall back to the values below.
+        versionCode((System.getenv("INTERVOX_VERSION_CODE") ?: "2").toInteger())
+        versionName(System.getenv("INTERVOX_VERSION_NAME") ?: "1.1")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

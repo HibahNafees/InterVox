@@ -87,6 +87,12 @@ jobs:
           } > "$dir/keystore.properties"
           echo "INTERVOX_KEYSTORE_PROPERTIES=$dir/keystore.properties" >> "$GITHUB_ENV"
 
+      - name: Version from run number
+        run: |
+          # +100 keeps CI builds above the hand-set versionCode 2 (T-159).
+          echo "INTERVOX_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "INTERVOX_VERSION_NAME=1.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+
       - name: Build signed release APK
         working-directory: frontend/android
         run: ./gradlew assembleRelease --no-daemon
@@ -119,11 +125,17 @@ jobs:
             exit 1
           fi
           echo "Signing certificate SHA-1 matches $EXPECTED_SHA1"
-          mv app-release.apk "intervox-${GITHUB_SHA::7}.apk"
+          badging="$("$ANDROID_HOME/build-tools/${BUILD_TOOLS}/aapt2" dump badging app-release.apk | head -1)"
+          if ! printf '%s' "$badging" | grep -q "versionCode='${INTERVOX_VERSION_CODE}' versionName='${INTERVOX_VERSION_NAME}'"; then
+            echo "::error::APK version is not ${INTERVOX_VERSION_NAME} (${INTERVOX_VERSION_CODE}): $badging"
+            exit 1
+          fi
+          echo "APK version ${INTERVOX_VERSION_NAME} (versionCode ${INTERVOX_VERSION_CODE})"
+          mv app-release.apk "intervox-${INTERVOX_VERSION_NAME}.apk"
 
       - uses: actions/upload-artifact@v5
         with:
-          name: intervox-apk-${{ github.sha }}
+          name: intervox-apk-1.1.${{ github.run_number }}
           path: frontend/android/app/build/outputs/apk/release/intervox-*.apk
           if-no-files-found: error
           retention-days: 30
