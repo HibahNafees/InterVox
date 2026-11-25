@@ -61,6 +61,9 @@ class Config:
         for e in os.environ.get("ADMIN_EMAILS", "").split(",")
         if e.strip()
     }
+    # Organizations for career agencies and the sales demo (T-166): "off",
+    # "admin_only" (only ADMIN_EMAILS, default) or "on" (every signed-in user).
+    ORG_FEATURE = os.environ.get("ORG_FEATURE", "admin_only").strip().lower()
     # Per-user daily caps (usage_limits).
     DAILY_INTERVIEW_MINUTES = int(os.environ.get("DAILY_INTERVIEW_MINUTES", "60"))
     DAILY_LONG_SESSIONS = int(os.environ.get("DAILY_LONG_SESSIONS", "1"))

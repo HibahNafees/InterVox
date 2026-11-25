@@ -22,6 +22,12 @@ EXPECTED_TABLES = {
     # Phase 9: résumé gap analysis (cached per résumé + job pair).
     "gap_analyses",
     "company_research",
+    # Organizations for career agencies (T-166).
+    "organizations",
+    "org_members",
+    "org_invites",
+    "assignments",
+    "report_comments",
 }
 
 

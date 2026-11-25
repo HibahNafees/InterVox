@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String
+from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -24,6 +24,10 @@ class User(db.Model):
     # Practice goal: mock interviews per week.
     weekly_goal: Mapped[int] = mapped_column(
         Integer, nullable=False, default=3, server_default="3"
+    )
+    # Seeded sales-demo account (T-166): no password, opened only by an admin.
+    is_demo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
     )
 
     def set_password(self, password: str) -> None:
