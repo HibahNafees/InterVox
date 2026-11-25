@@ -4,7 +4,7 @@
 
 Covers 2026-10-06 (first commit) to 2026-11-25: the API and the website are live at commit `aba1cc3` (deployed 2026-11-25 with three rewrite fixes, **T-162–T-164**); the deploy before it, `43c7ea7`, added **Sign in with Google** (**T-156**) and a daily cap on Fire-voiced replies (**T-154**). A fresh eval of 21 AI-candidate interviews shows strong answers scoring 3.98/5 on average against 2.37 for weak ones (§8), and a one-page `README.md` sums the project up for readers who won't open this report (**T-160**). InterVox also runs as an **Android app** and an installable web app (**T-147–T-151**); the signed Android APK is now built by GitHub Actions, and every build installs as an update (**T-157, T-159**).
 
-**Sources.** This report uses only the project's own records: the git history (166 commits up to `aba1cc3`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (144 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
+**Sources.** This report uses only the project's own records: the git history (166 commits up to `aba1cc3`), `CLAUDE.md`, the `docs/` folder (`SPEC.md`, `INTERVIEWER_RULES.md`, `RULES_CHECK.md`, `DEPLOY.md`), the ticket table `orchestration.tickets` (145 InterVox tickets) and the code. A claim that comes from a ticket or commit cites it as **T-n** or `commit`. Anything the sources don't settle is marked *Unclear*.
 
 ---
 
@@ -156,7 +156,7 @@ Most of the work happened in 7 days in October: Oct 6 (2 commits), Oct 8 (1), Oc
 | 11-23/24 | Deploy and phone test | Master deployed `43c7ea7`; Google sign-in, an interview in the app and the PWA install checked on an Android phone | — | T-149–T-151 closed |
 | 11-25 | **APK in GitHub Actions** | The signed release APK is built in CI on demand and on frontend pushes, with a check of the signing certificate; first run passed and the app installed and worked | `1e7d753`, `105fec4` | T-157 |
 | 11-25 | **APK versions** | `versionCode` = 100 + the Actions run number and `versionName` `1.1.<run>`, checked in the built APK; each APK sent to the phone installs as an update and keeps the user's data | `d550abe`, `bafdffe` | T-158, T-159 |
-| 11-25 | **Eval, README and rewrite fixes** | Live eval of 7 fields × strong/weak/rambling; persona check judges only scored answers; three rewrite fixes found from it; one-page README with screenshots and results; each APK published as a GitHub Release | `b598725`, `fca7d5a`, `3d9cebf`, `aba1cc3` | T-160–T-164 |
+| 11-25 | **Eval, README and rewrite fixes** | Live eval of 7 fields × strong/weak/rambling; persona check judges only scored answers; three rewrite fixes found from it; one-page README with screenshots and results, then a 43-second demo GIF recorded on the local app ($0.007, **T-165**); each APK published as a GitHub Release | `b598725`, `fca7d5a`, `3d9cebf`, `aba1cc3` | T-160–T-165 |
 | 11-25 | Deploy | Master deployed `aba1cc3` (scoring change only on the server; no migration) | — | T-162–T-164 closed |
 
 Every server deploy after go-live went through a ticket with a deploy plan, a human `pm approve`, and the master agent pulling and rebuilding (§7).
@@ -412,7 +412,7 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 
 - **What it shows:** strong beat weak in all 7 fields (backend, sales, healthcare, media, business, teaching, trades) by 1.6 points on average, and beat rambling in all 7 by 0.42. Every persona stayed in character, all runs finished, and no interviewer line was disrespectful.
 - **Not yet seen in a live session:** the T-162–T-164 rewrite fixes (tests and the offline check on 98 eval rewrites pass; master verified the deploy's health, not the rewrites).
-- **Open tickets:** none as of 2026-11-25. All 144 InterVox tickets are closed (106 problems, 34 ideas, 4 run tickets).
+- **Open tickets:** none as of 2026-11-25. All 145 InterVox tickets are closed (106 problems, 35 ideas, 4 run tickets).
 - *Unclear:*
   - The sources don't record total Fire spend for October; the live database couldn't be read from this session. The rules check and run tickets log individual check costs (for example ~$0.034, ~$0.05, $0.0744, $0.0768).
   - Ticket numbers are shared across the devbox. The gaps in InterVox's list (T-1–T-11, T-28, T-50, T-59, T-67, T-110, T-131, T-144, T-152) aren't InterVox tickets in the database, and the sources don't say what happened to them.

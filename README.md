@@ -4,7 +4,9 @@ Upload your résumé and a job description, answer the interviewer's questions o
 
 **[Try it: www.intervox.site](https://www.intervox.site)** · **[Android app (APK)](https://github.com/HibahNafees/InterVox/releases/latest/download/InterVox.apk)** · [Engineering report (PDF)](docs/InterVox-Project-Report.pdf)
 
-![InterVox sign-in page](docs/images/login.png)
+![Demo: set up an interview from a résumé and job description, answer two questions, get a scored report with stronger versions](docs/images/demo.gif)
+
+*43-second demo, sped up: paste a résumé and job description, edit the plan, answer one question well and one vaguely, and get the report: 4.3/5 vs 2/5, with a stronger version of each answer. [Sharper MP4](docs/images/intervox-demo.mp4).*
 
 ## What it does
 
