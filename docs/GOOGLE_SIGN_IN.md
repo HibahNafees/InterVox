@@ -36,7 +36,7 @@ audience (`GOOGLE_CLIENT_IDS`), issuer and `email_verified` with `google-auth`.
 4. **Clients → Create client → Android**, name *InterVox Android*:
    package `site.intervox.app`, SHA-1 of the release keystore (on the Mac):
    ```bash
-   keytool -list -v -keystore ~/.intervox/intervox-release.jks -alias intervox | grep SHA1
+   keytool -list -v -keystore ~/Documents/keys/intervox.jks -alias intervox | grep SHA1
    ```
    Nothing from this client goes in the code; Google uses it to trust the app. The app
    signs in with the **Web** client id. (A debug build has a different SHA-1; add a

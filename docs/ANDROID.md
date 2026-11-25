@@ -37,8 +37,9 @@ JDK 21 and Android SDK Platform 36 (`npm ci` → `npm run build:android` →
 
 ### Repository secrets (one time)
 
-Add four secrets under **Settings → Secrets and variables → Actions**, from the Mac that
-holds the keystore (values come from `~/.intervox/keystore.properties`):
+Add four secrets under **Settings → Secrets and variables → Actions → New repository
+secret**, from the Mac that holds the release keystore, `~/Documents/keys/intervox.jks`
+(alias `intervox`):
 
 | Secret | Value |
 |---|---|
@@ -47,10 +48,13 @@ holds the keystore (values come from `~/.intervox/keystore.properties`):
 | `KEY_ALIAS` | `keyAlias` (`intervox`) |
 | `KEY_PASSWORD` | `keyPassword` |
 
+On the website, get the `KEYSTORE_BASE64` value with
+`base64 -i ~/Documents/keys/intervox.jks | pbcopy` and paste it. Or with `gh`:
+
 ```bash
 # On the Mac, with gh logged in; each command reads the value from stdin or a prompt,
 # so nothing lands in shell history.
-base64 -i ~/.intervox/intervox-release.jks | gh secret set KEYSTORE_BASE64 -R HibahNafees/InterVox
+base64 -i ~/Documents/keys/intervox.jks | gh secret set KEYSTORE_BASE64 -R HibahNafees/InterVox
 gh secret set KEYSTORE_PASSWORD -R HibahNafees/InterVox    # paste storePassword
 gh secret set KEY_ALIAS -R HibahNafees/InterVox            # type: intervox
 gh secret set KEY_PASSWORD -R HibahNafees/InterVox         # paste keyPassword
@@ -95,18 +99,18 @@ export PATH="$ANDROID_HOME/platform-tools:$JAVA_HOME/bin:$PATH"
 ### Create the keystore (one time)
 
 ```bash
-mkdir -p ~/.intervox && chmod 700 ~/.intervox
-keytool -genkeypair -v -keystore ~/.intervox/intervox-release.jks \
+mkdir -p ~/Documents/keys ~/.intervox && chmod 700 ~/Documents/keys ~/.intervox
+keytool -genkeypair -v -keystore ~/Documents/keys/intervox.jks \
   -alias intervox -keyalg RSA -keysize 2048 -validity 10000 \
   -dname "CN=InterVox, O=InterVox, C=US"
 # keytool prompts for a password; reuse it below.
 cat > ~/.intervox/keystore.properties <<EOF
-storeFile=$HOME/.intervox/intervox-release.jks
+storeFile=$HOME/Documents/keys/intervox.jks
 storePassword=YOUR_PASSWORD
 keyAlias=intervox
 keyPassword=YOUR_PASSWORD
 EOF
-chmod 600 ~/.intervox/keystore.properties ~/.intervox/intervox-release.jks
+chmod 600 ~/.intervox/keystore.properties ~/Documents/keys/intervox.jks
 ```
 
 ### Build and install
