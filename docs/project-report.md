@@ -385,7 +385,8 @@ The pattern behind most fixes: **gpt-4o-mini treats prompt rules as soft** (**T-
 ## 8. What's left and future plans
 
 - **Checked on an Android phone, 2026-11-23/24:** Google sign-in in the app, the app's screens, a full interview in the app (mic, layout, Fire voice), and installing the PWA from www.intervox.site. T-149, T-150 and T-151 were closed after this.
-- **Not yet checked live:** a Google sign-in on the website, and the voice cap turning a reply into text.
+- **Checked 2026-11-25:** Google sign-in on the website works.
+- **Not yet checked live:** the voice cap turning a reply into text (left for later; it needs a little Fire spend).
 - **Done 2026-11-18:** the live `FIRE_MONTHLY_BUDGET_USD` went back from 1.45 to 1 (**T-145**; it had been left at 1.45 into November), deployed together with the Chat Lab (**T-146**).
 - **Chat Lab checked live on 2026-11-18** ($0.0019, temporary account deleted afterwards): the prep chat used only the résumé's facts and asked for a real example instead of inventing one; the debate and the judge (3/5, three reasons, one tip) worked; compare ran GPT-4o mini and Claude Haiku 4.5 side by side; a temperature of 2 was refused, and at 9 of 10 calls a compare was refused before any Fire call.
 - **Checked live on 2026-10-13:** panel with pressure (**T-132**), the reverse-mode voice (**T-133**), pressure-free coding questions (**T-134**), and an answer that names only the metric (**T-120/T-128**, Relevance 5). Deleting an interview (**T-136**): the live API refuses a signed-out delete (401) and another user's interview (404); no Fire calls. The reverse-mode voice was checked with a stand-in speech engine, so it shows the page speaks the answer, not how it sounds.
